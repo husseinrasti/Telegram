@@ -83,7 +83,7 @@ public class ShareQuickView implements NotificationCenter.NotificationCenterDele
     private RecyclerView createRecyclerDialogs(Context context) {
         GradientDrawable background = new GradientDrawable();
         background.setShape(GradientDrawable.RECTANGLE);
-        background.setColor(Theme.getColor(Theme.key_dialogBackground));
+        background.setColor(Theme.getColor(Theme.key_dialogBackground, resourcesProvider));
         background.setCornerRadii(new float[]{100, 100, 100, 100, 100, 100, 100, 100});
 
         RecyclerListView recyclerDialogs = new RecyclerListView(context, resourcesProvider);

@@ -3451,6 +3451,7 @@
     <string name="BotUnblock">RESTART</string>
     <string name="BotRestart">Restart bot</string>
     <string name="BotAddToMenu">Add to Menu</string>
+    <string name="TapHereToUseThisBot">Tap here to use this bot</string>
     <string name="BotCantOpenAttachMenuBot">This bot can\'t be opened in chats with bots.</string>
     <string name="BotCantOpenAttachMenuUser">This bot can\'t be opened in chats with users.</string>
     <string name="BotCantOpenAttachMenuGroup">This bot can\'t be opened in groups.</string>
