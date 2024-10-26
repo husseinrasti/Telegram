@@ -561,7 +561,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         default void didPressSideButton(ChatMessageCell cell) {
         }
 
-        default void didLongPressSideButton(ChatMessageCell cell, float sideStartX, float sideStartY) {
+        default void didLongPressSideButton(ChatMessageCell cell, int positionStartX, int positionStartY) {
         }
 
         default void didPressOther(ChatMessageCell cell, float otherX, float otherY) {
@@ -4363,7 +4363,6 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                             } else if (pressedSideButton == 3) {
                                 delegate.didPressCommentButton(this);
                             } else {
-                                Log.i("hussein", "didPressSideButton");
                                 delegate.didPressSideButton(this);
                             }
                         }
@@ -10107,7 +10106,6 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
 
         if (delegate != null && sideButtonPressed) {
             playSoundEffect(SoundEffectConstants.CLICK);
-            Log.i("hussein", "long press: " + pressedSideButton);
             if (pressedSideButton == SIDE_BUTTON_SPONSORED_CLOSE) {
                 delegate.didPressSponsoredClose(this);
             } else if (pressedSideButton == SIDE_BUTTON_SPONSORED_MORE) {
@@ -10115,8 +10113,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             } else if (pressedSideButton == 3) {
                 delegate.didPressCommentButton(this);
             } else {
-                Log.i("hussein", "didLongPressSideButton");
-                delegate.didLongPressSideButton(this , sideStartX , (sideStartY ));
+                delegate.didLongPressSideButton(this , (int) sideStartX, (int) (sideStartY + dp(16) + this.getY()));
             }
             sideButtonPressed = false;
             pressedSideButton = 0;
