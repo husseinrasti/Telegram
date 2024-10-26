@@ -20,12 +20,8 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AccelerateDecelerateInterpolator;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.PopupWindow;
-import android.widget.TextView;
 
-import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -40,7 +36,6 @@ import org.telegram.messenger.SendMessagesHelper;
 import org.telegram.messenger.UserConfig;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.ShareQuickDialogCell;
-import org.telegram.ui.ChatActivity;
 import org.telegram.tgnet.TLRPC;
 
 import java.util.ArrayList;
@@ -55,22 +50,16 @@ public class ShareQuickView implements NotificationCenter.NotificationCenterDele
     private final ArrayList<MessageObject> sendingMessageObjects;
     public boolean includeStoryFromMessage;
 
-    private final ChatActivity parentFragment;
-
     public boolean forceDarkThemeForHint;
 
     private final Theme.ResourcesProvider resourcesProvider;
 
     private PopupWindow popupWindow;
 
-    public ShareQuickView(final Context context, final int x, final int y, ChatActivity fragment, ArrayList<MessageObject> messages, Theme.ResourcesProvider resourcesProvider) {
+    public ShareQuickView(final Context context, final int positionStartX, final int positionStartY, ArrayList<MessageObject> messages, Theme.ResourcesProvider resourcesProvider) {
         this.resourcesProvider = resourcesProvider;
-
-        parentFragment = fragment;
-
         sendingMessageObjects = messages;
-
-        showPopupWindow(context, x, y);
+        showPopupWindow(context, positionStartX, positionStartY);
     }
 
     public void setDelegate(ShareQuickDelegate shareQuickDelegate) {
@@ -98,8 +87,8 @@ public class ShareQuickView implements NotificationCenter.NotificationCenterDele
         background.setCornerRadii(new float[]{100, 100, 100, 100, 100, 100, 100, 100});
 
         RecyclerListView recyclerDialogs = new RecyclerListView(context, resourcesProvider);
-        recyclerDialogs.setPadding(dp(16),  dp(4), dp(16),  dp(4));
-        recyclerDialogs.setClipToPadding(false);
+        recyclerDialogs.setPadding(dp(16), dp(4), dp(16), dp(4));
+        recyclerDialogs.setClipToPadding(true);
         recyclerDialogs.setBackground(background);
         recyclerDialogs.setLayoutManager(new LinearLayoutManager(context, RecyclerView.HORIZONTAL, true));
         recyclerDialogs.setHorizontalScrollBarEnabled(false);
@@ -123,97 +112,21 @@ public class ShareQuickView implements NotificationCenter.NotificationCenterDele
         return recyclerDialogs;
     }
 
-    private LinearLayout createDynamicUserList(Context context) {
-        LinearLayout container = getWrapperLayout(context);
-
-        GradientDrawable backgroundImageAvatar = new GradientDrawable();
-        backgroundImageAvatar.setShape(GradientDrawable.RECTANGLE);
-        backgroundImageAvatar.setColor(Theme.getColor(Theme.key_dialogBackground));
-        backgroundImageAvatar.setCornerRadii(new float[]{100, 100, 100, 100, 100, 100, 100, 100});
-
-        LinearLayout layoutNameAvatar = new LinearLayout(context);
-        layoutNameAvatar.setOrientation(LinearLayout.HORIZONTAL);
-        layoutNameAvatar.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        layoutNameAvatar.setPadding(32, 0, 32, 16);
-
-        LinearLayout layoutImageAvatar = new LinearLayout(context);
-        layoutImageAvatar.setOrientation(LinearLayout.HORIZONTAL);
-        layoutImageAvatar.setPadding(32, 0, 32, 0);
-        layoutImageAvatar.setBackground(backgroundImageAvatar);
-
-        // Add user profile images dynamically
-        for (int i = 0; i < 5; i++) {
-            ImageView avatarImage = getImageView(context);
-            TextView avatarText = getTextView(context, "" + i);
-            layoutNameAvatar.addView(avatarText);
-            layoutImageAvatar.addView(avatarImage);
-        }
-
-        container.addView(layoutNameAvatar);
-        container.addView(layoutImageAvatar);
-        return container;
-    }
-
-    private static @NonNull LinearLayout getWrapperLayout(Context context) {
-        LinearLayout container = new LinearLayout(context);
-        container.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        params.setMargins(48, 32, 48, 32);
-        container.setLayoutParams(params);
-//        container.setPadding(32, 32, 32, 32);
-        container.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        return container;
-    }
-
-    private static @NonNull ImageView getImageView(Context context) {
-        ImageView profileImage = new ImageView(context);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(100, 100);
-        params.setMargins(16, 16, 16, 16);
-        profileImage.setLayoutParams(params);
-        profileImage.setImageResource(R.drawable.ic_launcher_dr);
-
-        // Add click listener if needed
-        profileImage.setOnClickListener(v -> {
-            // Handle click on the user profile image
-        });
-        return profileImage;
-    }
-
-    private static @NonNull TextView getTextView(Context context, String text) {
-        TextView textView = new TextView(context);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        params.setMargins(16, 0, 16, 0);
-        textView.setLayoutParams(params);
-        textView.setText(text);
-        textView.setGravity(Gravity.CENTER);
-        textView.setTextColor(Theme.getColor(Theme.key_avatar_text));
-
-        GradientDrawable backgroundText = new GradientDrawable();
-        backgroundText.setShape(GradientDrawable.RECTANGLE);
-        backgroundText.setColor(Color.alpha(Theme.getColor(Theme.key_dialogBackground)) / 127);
-        backgroundText.setCornerRadii(new float[]{100, 100, 100, 100, 100, 100, 100, 100});
-
-        textView.setBackground(backgroundText);
-
-        return textView;
-    }
-
-    // Play the enter animation (scale and fade in)
     private void playEnterAnimation(View view) {
-        ObjectAnimator scaleX = ObjectAnimator.ofFloat(view, "scaleX", 0.7f, 1f);
-        ObjectAnimator scaleY = ObjectAnimator.ofFloat(view, "scaleY", 0.7f, 1f);
+        ObjectAnimator scaleX = ObjectAnimator.ofFloat(view, "scaleX", 0.5f, 1f);
+        ObjectAnimator scaleY = ObjectAnimator.ofFloat(view, "scaleY", 0.5f, 1f);
         ObjectAnimator fadeIn = ObjectAnimator.ofFloat(view, "alpha", 0f, 1f);
 
         AnimatorSet animatorSet = new AnimatorSet();
         animatorSet.setInterpolator(new AccelerateDecelerateInterpolator());
-        animatorSet.setDuration(300);
+        animatorSet.setDuration(400);
         animatorSet.playTogether(scaleX, scaleY, fadeIn);
         animatorSet.start();
     }
 
     private void playExitAnimation(final View view) {
-        ObjectAnimator scaleX = ObjectAnimator.ofFloat(view, "scaleX", 1f, 0.7f);
-        ObjectAnimator scaleY = ObjectAnimator.ofFloat(view, "scaleY", 1f, 0.7f);
+        ObjectAnimator scaleX = ObjectAnimator.ofFloat(view, "scaleX", 1f, 0.5f);
+        ObjectAnimator scaleY = ObjectAnimator.ofFloat(view, "scaleY", 1f, 0.5f);
         ObjectAnimator fadeOut = ObjectAnimator.ofFloat(view, "alpha", 1f, 0f);
 
         AnimatorSet animatorSet = new AnimatorSet();
@@ -242,6 +155,10 @@ public class ShareQuickView implements NotificationCenter.NotificationCenterDele
         public void fetchDialogs() {
             dialogs.clear();
             long selfUserId = UserConfig.getInstance(currentAccount).clientUserId;
+            if (!MessagesController.getInstance(currentAccount).dialogsForward.isEmpty()) {
+                TLRPC.Dialog dialog = MessagesController.getInstance(currentAccount).dialogsForward.get(0);
+                dialogs.add(dialog);
+            }
             ArrayList<TLRPC.Dialog> archivedDialogs = new ArrayList<>();
             ArrayList<TLRPC.Dialog> allDialogs = MessagesController.getInstance(currentAccount).getAllDialogs();
             for (int a = 0; a < allDialogs.size(); a++) {
@@ -272,39 +189,24 @@ public class ShareQuickView implements NotificationCenter.NotificationCenterDele
                 }
             }
             dialogs.addAll(archivedDialogs);
-            if (parentFragment != null) {
-                switch (parentFragment.shareAlertDebugMode) {
-                    case ChatActivity.DEBUG_SHARE_ALERT_MODE_LESS:
-                        ArrayList<TLRPC.Dialog> sublist = new ArrayList<>(dialogs.subList(0, Math.min(4, dialogs.size())));
-                        dialogs.clear();
-                        dialogs.addAll(sublist);
-                        break;
-                    case ChatActivity.DEBUG_SHARE_ALERT_MODE_MORE:
-                        while (!dialogs.isEmpty() && dialogs.size() < 80) {
-                            dialogs.add(dialogs.get(dialogs.size() - 1));
-                        }
-                        break;
-                }
-            }
             notifyDataSetChanged();
         }
 
         @Override
         public int getItemCount() {
             int count = dialogs.size();
-//            if (count > 6) {
-//                count = 6;
-//            }
-//            return count;
-            if (count != 0) {
-                count++;
+            if (count > 6) {
+                count = 6;
             }
             return count;
+//            if (count != 0) {
+//                count++;
+//            }
+//            return count;
         }
 
         public TLRPC.Dialog getItem(int position) {
-            position--;
-            if (position < 0 || position >= dialogs.size()) { //dialogs.size()
+            if (position < 0 || position >= 7) { //dialogs.size()
                 return null;
             }
             return dialogs.get(position);
@@ -317,30 +219,18 @@ public class ShareQuickView implements NotificationCenter.NotificationCenterDele
 
         @Override
         public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            View view;
             RecyclerView.LayoutParams layoutParams = new RecyclerView.LayoutParams(dp(40), dp(40));
             layoutParams.setMargins(dp(4), dp(4), dp(4), dp(4));
-            switch (viewType) {
-                case 0: {
-                    view = new ShareQuickDialogCell(context, resourcesProvider) {
-                        @Override
-                        protected String repostToCustomName() {
-                            if (includeStoryFromMessage) {
-                                return LocaleController.getString(R.string.RepostToStory);
-                            }
-                            return super.repostToCustomName();
-                        }
-                    };
-                    view.setLayoutParams(layoutParams);
-                    break;
+            ShareQuickDialogCell view = new ShareQuickDialogCell(context, resourcesProvider) {
+                @Override
+                protected String repostToCustomName() {
+                    if (includeStoryFromMessage) {
+                        return LocaleController.getString(R.string.RepostToStory);
+                    }
+                    return super.repostToCustomName();
                 }
-                case 1:
-                default: {
-                    view = new View(context);
-                    view.setLayoutParams(layoutParams);
-                    break;
-                }
-            }
+            };
+            view.setLayoutParams(layoutParams);
             return new RecyclerListView.Holder(view);
         }
 

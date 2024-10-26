@@ -35438,13 +35438,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         }
 
         @Override
-        public void didLongPressSideButton(ChatMessageCell cell, float sideStartX, float sideStartY) {
-            Log.i("hussein", "didLongPressSideButton: " + cell);
-            Log.i("hussein", "didLongPressSideButton cell x: " + cell.getX());
-            Log.i("hussein", "didLongPressSideButton cell y: " + cell.getY());
-            Log.i("hussein", "didLongPressSideButton side x: " + sideStartX);
-            Log.i("hussein", "didLongPressSideButton side y: " + sideStartY);
-            Log.i("hussein", "didLongPressSideButton side y + y: " + (sideStartY + cell.getY()));
+        public void didLongPressSideButton(ChatMessageCell cell, int positionStartX, int positionStartY) {
             if (getParentActivity() == null) {
                 return;
             }
@@ -35476,9 +35470,8 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                     arrayList.add(messageObject);
                 }
                 final boolean includeStory = getMessagesController().storiesEnabled() && StoryEntry.canRepostMessage(messageObject);
-                ShareQuickView shareQuickView = new ShareQuickView(getContext(), (int) sideStartX, (int) (sideStartY + cell.getY()), ChatActivity.this, arrayList, themeDelegate);
+                ShareQuickView shareQuickView = new ShareQuickView(getContext(), positionStartX, positionStartY, arrayList, themeDelegate);
                 shareQuickView.includeStoryFromMessage = includeStory;
-//                shareQuickView.showPopupWindow(getContext(), (int) sideStartX, (int) (sideStartY + cell.getY()));
                 shareQuickView.setDelegate(dialog -> {
                     createUndoView();
                     if (undoView == null) {
@@ -36539,7 +36532,6 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         @Override
         public void didPressReplyMessage(ChatMessageCell cell, int id) {
             if (UserObject.isReplyUser(currentUser)) {
-                Log.i("hussein", "didPressReplyMessage: " + cell);
                 didPressSideButton(cell);
                 return;
             }

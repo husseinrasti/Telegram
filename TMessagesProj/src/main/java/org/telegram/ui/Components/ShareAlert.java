@@ -34,7 +34,6 @@ import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.TextUtils;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
@@ -480,12 +479,6 @@ public class ShareAlert extends BottomSheet implements NotificationCenter.Notifi
 
     public ShareAlert(final Context context, ChatActivity fragment, ArrayList<MessageObject> messages, final String text, final String text2, boolean channel, final String copyLink, final String copyLink2, boolean fullScreen, boolean forCall, boolean includeStory, Theme.ResourcesProvider resourcesProvider) {
         super(context, true, resourcesProvider);
-
-        Log.i("hussein", "ShareAlert #4 Chat Activity");
-        Log.i("hussein", "ShareAlert: " + channel);
-        Log.i("hussein", "ShareAlert: " + messages);
-        Log.i("hussein", "ShareAlert: " + text);
-        Log.i("hussein", "ShareAlert: " + context);
 
         this.resourcesProvider = resourcesProvider;
         this.includeStory = includeStory;

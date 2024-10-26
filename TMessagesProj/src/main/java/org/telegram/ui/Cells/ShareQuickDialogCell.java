@@ -101,7 +101,6 @@ public class ShareQuickDialogCell extends FrameLayout implements NotificationCen
             } else {
                 imageView.setForUserOrChat(user, avatarDrawable);
             }
-            imageView.setRoundRadius(dp(28));
         } else {
             user = null;
             premiumBlocked = false;
@@ -109,8 +108,8 @@ public class ShareQuickDialogCell extends FrameLayout implements NotificationCen
             TLRPC.Chat chat = MessagesController.getInstance(currentAccount).getChat(-uid);
             avatarDrawable.setInfo(currentAccount, chat);
             imageView.setForUserOrChat(chat, avatarDrawable);
-            imageView.setRoundRadius(chat != null && chat.forum ? dp(16) : dp(28));
         }
+        imageView.setRoundRadius(dp(28));
         currentDialog = uid;
     }
 
