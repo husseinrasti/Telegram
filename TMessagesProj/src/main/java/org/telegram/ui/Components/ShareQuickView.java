@@ -1,11 +1,3 @@
-/*
- * This is the source code of Telegram for Android v. 5.x.x.
- * It is licensed under GNU GPL v. 2 or later.
- * You should have received a copy of the license in this archive (see LICENSE).
- *
- * Copyright Nikolai Kudashov, 2013-2018.
- */
-
 package org.telegram.ui.Components;
 
 import static org.telegram.messenger.AndroidUtilities.dp;
@@ -15,19 +7,23 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.drawable.ColorDrawable;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
+import android.view.GestureDetector;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewAnimationUtils;
 import android.view.ViewGroup;
 import android.view.animation.AccelerateDecelerateInterpolator;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.LocaleController;
@@ -101,16 +97,11 @@ public class ShareQuickView implements NotificationCenter.NotificationCenterDele
     }
 
     private RecyclerView createRecyclerDialogs(Context context) {
-        GradientDrawable background = new GradientDrawable();
-        background.setShape(GradientDrawable.RECTANGLE);
-        background.setColor(Theme.getColor(Theme.key_dialogBackground, resourcesProvider));
-        background.setCornerRadii(new float[]{100, 100, 100, 100, 100, 100, 100, 100});
-
         RecyclerListView recyclerDialogs = new RecyclerListView(context, resourcesProvider);
         recyclerDialogs.setLayoutParams(LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         recyclerDialogs.setPadding(dp(16), dp(4), dp(16), dp(4));
         recyclerDialogs.setClipToPadding(true);
-        recyclerDialogs.setBackground(background);
+        recyclerDialogs.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(50), getThemedColor(Theme.key_dialogBackground)));
         recyclerDialogs.setLayoutManager(new LinearLayoutManager(context, RecyclerView.HORIZONTAL, true));
         recyclerDialogs.setHorizontalScrollBarEnabled(false);
         recyclerDialogs.setVerticalScrollBarEnabled(false);
@@ -130,7 +121,45 @@ public class ShareQuickView implements NotificationCenter.NotificationCenterDele
             }
             actionBarPopupWindow.dismiss();
         });
+
+        recyclerDialogs.addOnItemTouchListener(new RecyclerView.OnItemTouchListener() {
+            GestureDetector gestureDetector = new GestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
+                @Override
+                public boolean onDown(MotionEvent e) {
+                    return true;
+                }
+            });
+
+            @Override
+            public boolean onInterceptTouchEvent(@NonNull RecyclerView rv, @NonNull MotionEvent e) {
+                View touchedView = rv.findChildViewUnder(e.getX(), e.getY());
+                int action = e.getAction();
+                if (touchedView != null) {
+                    int position = rv.getChildAdapterPosition(touchedView);
+                    if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_MOVE) {
+                        listAdapter.setSelectedPosition(position);
+                        listAdapter.notifyDataSetChanged();
+                    } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                        listAdapter.setSelectedPosition(-1);
+                        listAdapter.notifyDataSetChanged();
+                    }
+                }
+                return false;
+            }
+
+            @Override
+            public void onTouchEvent(@NonNull RecyclerView rv, @NonNull MotionEvent e) {
+            }
+
+            @Override
+            public void onRequestDisallowInterceptTouchEvent(boolean disallowIntercept) {
+            }
+        });
         return recyclerDialogs;
+    }
+
+    private int getThemedColor(int key) {
+        return Theme.getColor(key, resourcesProvider);
     }
 
     private void playEnterAnimation(View view) {
@@ -204,8 +233,13 @@ public class ShareQuickView implements NotificationCenter.NotificationCenterDele
         private Context context;
         private ArrayList<TLRPC.Dialog> dialogs = new ArrayList<>();
 
+        private int selectedPosition = 0;
+        private final Paint blurPaint;
+
         public ShareDialogsAdapter(Context context) {
             this.context = context;
+            blurPaint = new Paint();
+            blurPaint.setAlpha(50);
             fetchDialogs();
         }
 
@@ -297,6 +331,17 @@ public class ShareQuickView implements NotificationCenter.NotificationCenterDele
             TLRPC.Dialog dialog = getItem(position);
             if (dialog == null) return;
             cell.setDialog(dialog.id);
+            if (position != selectedPosition) {
+                holder.itemView.setLayerType(View.LAYER_TYPE_SOFTWARE, blurPaint);
+                holder.itemView.setAlpha(0.9f);
+            } else {
+                holder.itemView.setLayerType(View.LAYER_TYPE_NONE, null);
+                holder.itemView.setAlpha(1f);
+            }
+        }
+
+        public void setSelectedPosition(int position) {
+            this.selectedPosition = position;
         }
 
     }
