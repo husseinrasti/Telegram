@@ -91,6 +91,7 @@ android {
             debuggable false
             jniDebuggable false
             signingConfig signingConfigs.release
+            applicationIdSuffix ".hussein"
             minifyEnabled true
             shrinkResources false
             multiDexEnabled true
