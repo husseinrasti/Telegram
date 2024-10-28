@@ -35492,7 +35492,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                     }
                     if (dialog != null) {
                         if (dialog.id != getUserConfig().getClientUserId() || !BulletinFactory.of(ChatActivity.this).showForwardedBulletinWithTag(dialog.id, 1)) {
-                            undoView.showWithAction(dialog.id, UndoView.ACTION_FWD_MESSAGES, 1, 1, null, null);
+                            undoView.showWithAction(dialog.id, UndoView.ACTION_FWD_MESSAGES, 1, null, null, null);
                         }
                     } else {
                         undoView.showWithAction(0, UndoView.ACTION_FWD_MESSAGES, 1, 1, null, null);
