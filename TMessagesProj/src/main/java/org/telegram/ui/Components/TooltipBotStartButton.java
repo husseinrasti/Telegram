@@ -112,7 +112,8 @@ public class TooltipBotStartButton extends View {
         contentView.addView(layoutText, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL, 0, 0, 0, 0));
 
         ImageView arrowImageView = new ImageView(getContext());
-        arrowImageView.setImageDrawable(ContextCompat.getDrawable(getContext(), R.drawable.arrow_down_drop));
+        arrowImageView.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chat_gifSaveHintBackground), PorterDuff.Mode.SRC_IN));
+        arrowImageView.setImageDrawable(ContextCompat.getDrawable(getContext(), R.drawable.tooltip_arrow));
         arrowImageView.setContentDescription(text);
         arrowImageView.setScaleType(ImageView.ScaleType.FIT_XY);
         contentView.addView(arrowImageView, getArrowParams());
