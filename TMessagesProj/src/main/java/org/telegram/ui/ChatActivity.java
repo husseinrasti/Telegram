@@ -76,7 +76,6 @@ import android.text.style.ClickableSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.ImageSpan;
 import android.text.style.URLSpan;
-import android.util.Log;
 import android.util.Pair;
 import android.util.Property;
 import android.util.SparseArray;
@@ -2951,7 +2950,6 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         if (chatAttachAlert != null) {
             chatAttachAlert.dismissInternal();
         }
-        tooltipBotStartButton.hide();
         ContentPreviewViewer.getInstance().clearDelegate(contentPreviewViewerDelegate);
         getNotificationCenter().onAnimationFinish(transitionAnimationIndex);
         NotificationCenter.getGlobalInstance().onAnimationFinish(transitionAnimationGlobalIndex);
@@ -7959,7 +7957,12 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         bottomOverlayChat.setClipChildren(false);
         contentView.addView(bottomOverlayChat, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 51, Gravity.BOTTOM));
 
-        tooltipBotStartButton = new TooltipBotStartButton(getContext(), themeDelegate);
+        tooltipBotStartButton = new TooltipBotStartButton(context, themeDelegate);
+        tooltipBotStartButton.setAutoCancelable(true);
+        tooltipBotStartButton.setText(LocaleController.getString(R.string.TapHereToUseThisBot));
+        tooltipBotStartButton.setIcon(R.drawable.double_arrow_down_24);
+        bottomOverlayChat.addView(tooltipBotStartButton, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM));
+
         bottomOverlayStartButton = new TextView(context) {
             CellFlickerDrawable cellFlickerDrawable;
 
@@ -25257,7 +25260,9 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             if (userBlocked) {
                 if (bottomOverlayStartButton != null) {
                     bottomOverlayStartButton.setVisibility(View.GONE);
-                    tooltipBotStartButton.hide();
+                    if (tooltipBotStartButton != null){
+                        tooltipBotStartButton.dismiss();
+                    }
                 }
                 if (currentUser.bot) {
                     bottomOverlayChatText.setText(LocaleController.getString(R.string.BotUnblock));
@@ -25286,7 +25291,9 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
 //                bottomOverlayStartButton.setText(LocaleController.getString(R.string.BotStart));
                 if (bottomOverlayStartButton != null) {
                     bottomOverlayStartButton.setVisibility(View.VISIBLE);
-                    tooltipBotStartButton.show(bottomOverlayStartButton);
+                    if (tooltipBotStartButton != null) {
+                        tooltipBotStartButton.show(bottomOverlayStartButton);
+                    }
                 }
                 bottomOverlayChatText.setVisibility(View.GONE);
                 chatActivityEnterView.hidePopup(false);
@@ -35484,11 +35491,11 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                         return;
                     }
                     if (dialog != null) {
-                        if (dialog.id != getUserConfig().getClientUserId()) {
+                        if (dialog.id != getUserConfig().getClientUserId() || !BulletinFactory.of(ChatActivity.this).showForwardedBulletinWithTag(dialog.id, 1)) {
                             undoView.showWithAction(dialog.id, UndoView.ACTION_FWD_MESSAGES, 1, 1, null, null);
                         }
                     } else {
-                        undoView.showWithAction(0, UndoView.ACTION_FWD_MESSAGES, null, 1, null, null);
+                        undoView.showWithAction(0, UndoView.ACTION_FWD_MESSAGES, 1, 1, null, null);
                     }
                 });
                 fragmentView.requestLayout();
