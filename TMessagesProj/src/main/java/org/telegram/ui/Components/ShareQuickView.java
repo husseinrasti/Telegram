@@ -10,18 +10,21 @@ package org.telegram.ui.Components;
 
 import static org.telegram.messenger.AndroidUtilities.dp;
 
+import android.animation.Animator;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewAnimationUtils;
 import android.view.ViewGroup;
 import android.view.animation.AccelerateDecelerateInterpolator;
-import android.widget.PopupWindow;
 
+import androidx.annotation.RequiresApi;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -34,6 +37,7 @@ import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SendMessagesHelper;
 import org.telegram.messenger.UserConfig;
+import org.telegram.ui.ActionBar.ActionBarPopupWindow;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.ShareQuickDialogCell;
 import org.telegram.tgnet.TLRPC;
@@ -54,7 +58,7 @@ public class ShareQuickView implements NotificationCenter.NotificationCenterDele
 
     private final Theme.ResourcesProvider resourcesProvider;
 
-    private PopupWindow popupWindow;
+    private ActionBarPopupWindow actionBarPopupWindow;
 
     public ShareQuickView(final Context context, final int positionStartX, final int positionStartY, ArrayList<MessageObject> messages, Theme.ResourcesProvider resourcesProvider) {
         this.resourcesProvider = resourcesProvider;
@@ -68,16 +72,32 @@ public class ShareQuickView implements NotificationCenter.NotificationCenterDele
 
     public void showPopupWindow(Context context, int positionX, int positionY) {
         RecyclerView container = createRecyclerDialogs(context);
+        container.setVisibility(View.INVISIBLE);
 
-        popupWindow = new PopupWindow(container, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, true);
-        popupWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        actionBarPopupWindow = new ActionBarPopupWindow(container, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        actionBarPopupWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
 
-        popupWindow.showAtLocation(container, Gravity.NO_GRAVITY, positionX, positionY);
+        actionBarPopupWindow.showAtLocation(container, Gravity.NO_GRAVITY, positionX, positionY);
 
+        container.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         container.setPivotX(positionX);
         container.setPivotY(positionY);
-        playEnterAnimation(container);
-        popupWindow.setOnDismissListener(() -> playExitAnimation(container));
+
+        container.post(() -> {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                playEnterAnimation(container, positionX, positionY);
+            } else {
+                playEnterAnimation(container);
+            }
+        });
+
+        actionBarPopupWindow.setOnDismissListener(() -> {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                playExitAnimation(container, positionX, positionY);
+            } else {
+                playExitAnimation(container);
+            }
+        });
     }
 
     private RecyclerView createRecyclerDialogs(Context context) {
@@ -87,6 +107,7 @@ public class ShareQuickView implements NotificationCenter.NotificationCenterDele
         background.setCornerRadii(new float[]{100, 100, 100, 100, 100, 100, 100, 100});
 
         RecyclerListView recyclerDialogs = new RecyclerListView(context, resourcesProvider);
+        recyclerDialogs.setLayoutParams(LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         recyclerDialogs.setPadding(dp(16), dp(4), dp(16), dp(4));
         recyclerDialogs.setClipToPadding(true);
         recyclerDialogs.setBackground(background);
@@ -107,7 +128,7 @@ public class ShareQuickView implements NotificationCenter.NotificationCenterDele
             if (delegate != null) {
                 delegate.onSend(dialog);
             }
-            popupWindow.dismiss();
+            actionBarPopupWindow.dismiss();
         });
         return recyclerDialogs;
     }
@@ -121,7 +142,17 @@ public class ShareQuickView implements NotificationCenter.NotificationCenterDele
         animatorSet.setInterpolator(new AccelerateDecelerateInterpolator());
         animatorSet.setDuration(400);
         animatorSet.playTogether(scaleX, scaleY, fadeIn);
+        view.setVisibility(View.VISIBLE);
         animatorSet.start();
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    private void playEnterAnimation(View view, int positionX, int positionY) {
+        int finalRadius = (int) Math.hypot(view.getWidth(), view.getHeight());
+        Animator circularReveal = ViewAnimationUtils.createCircularReveal(view, positionX, positionY, 0, finalRadius);
+        circularReveal.setDuration(400);
+        view.setVisibility(View.VISIBLE);
+        circularReveal.start();
     }
 
     private void playExitAnimation(final View view) {
@@ -137,9 +168,35 @@ public class ShareQuickView implements NotificationCenter.NotificationCenterDele
         animatorSet.addListener(new android.animation.AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(android.animation.Animator animation) {
-                popupWindow.dismiss();
+                actionBarPopupWindow.dismiss();
             }
         });
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    private void playExitAnimation(final View view, int positionX, int positionY) {
+        int finalRadius = (int) Math.hypot(view.getWidth(), view.getHeight());
+        Animator circularConceal = ViewAnimationUtils.createCircularReveal(view, positionX, positionY, finalRadius, 0);
+        circularConceal.setDuration(300);
+        circularConceal.addListener(new Animator.AnimatorListener() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                actionBarPopupWindow.dismiss();
+            }
+
+            @Override
+            public void onAnimationStart(Animator animation) {
+            }
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+            }
+
+            @Override
+            public void onAnimationRepeat(Animator animation) {
+            }
+        });
+        circularConceal.start();
     }
 
     private class ShareDialogsAdapter extends RecyclerListView.SelectionAdapter {

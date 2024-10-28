@@ -10113,7 +10113,11 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             } else if (pressedSideButton == 3) {
                 delegate.didPressCommentButton(this);
             } else {
-                delegate.didLongPressSideButton(this , (int) sideStartX, (int) (sideStartY + dp(16) + this.getY()));
+                int[] location = new int[2];
+                this.getLocationOnScreen(location);
+                int rightBottomY = location[1] + this.getHeight();
+                int positionY = rightBottomY - (int) (this.getHeight() - sideStartY) - dp(64);
+                delegate.didLongPressSideButton(this, (int) sideStartX, positionY);
             }
             sideButtonPressed = false;
             pressedSideButton = 0;
@@ -23530,7 +23534,6 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                     } else {
                         info.setContentDescription(getString("ShareFile", R.string.ShareFile));
                     }
-                    //todo hussein
                     info.addAction(AccessibilityNodeInfo.ACTION_CLICK);
                     info.addAction(AccessibilityNodeInfo.ACTION_LONG_CLICK);
                     rect.set((int) sideStartX, (int) sideStartY, (int) sideStartX + AndroidUtilities.dp(40), (int) sideStartY + AndroidUtilities.dp(32));
