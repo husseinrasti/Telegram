@@ -3058,11 +3058,19 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
 
         if (!customTabs()) {
             addView(fragmentContextView = new FragmentContextView(context, parent, this, false, resourcesProvider), LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 38, Gravity.TOP | Gravity.LEFT, 0, 48, 0, 0));
-            fragmentContextView.setDelegate((start, show) -> {
-                if (!start) {
-                    requestLayout();
+            fragmentContextView.setDelegate(new FragmentContextView.FragmentContextViewDelegate() {
+                @Override
+                public void onAnimation(boolean start, boolean show) {
+                    if (!start) {
+                        requestLayout();
+                    }
+                    setVisibleHeight(lastVisibleHeight);
                 }
-                setVisibleHeight(lastVisibleHeight);
+
+                @Override
+                public void onShowNotifyLiveStream() {
+
+                }
             });
 
             addView(scrollSlidingTextTabStrip, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, Gravity.LEFT | Gravity.TOP));

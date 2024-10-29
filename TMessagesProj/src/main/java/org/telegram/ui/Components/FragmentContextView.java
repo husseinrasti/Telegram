@@ -169,13 +169,17 @@ public class FragmentContextView extends FrameLayout implements NotificationCent
                 scheduleRunnableScheduled = false;
                 return;
             }
-            int currentTime = fragment.getConnectionsManager().getCurrentTime();
-            int diff = call.call.schedule_date - currentTime;
             String str;
-            if (diff >= 24 * 60 * 60) {
-                str = LocaleController.formatPluralString("Days", Math.round(diff / (24 * 60 * 60.0f)));
+            if (call.call.schedule_start_subscribed) {
+                int currentTime = fragment.getConnectionsManager().getCurrentTime();
+                int diff = call.call.schedule_date - currentTime;
+                if (diff >= 24 * 60 * 60) {
+                    str = LocaleController.formatPluralString("Days", Math.round(diff / (24 * 60 * 60.0f)));
+                } else {
+                    str = AndroidUtilities.formatFullDuration(call.call.schedule_date - currentTime);
+                }
             } else {
-                str = AndroidUtilities.formatFullDuration(call.call.schedule_date - currentTime);
+                str = LocaleController.getString(R.string.NotifyMe);
             }
             int width = (int) Math.ceil(gradientTextPaint.measureText(str));
             timeLayout = new StaticLayout(str, gradientTextPaint, width, Layout.Alignment.ALIGN_NORMAL, 1.0f, 0.0f, false);
@@ -210,8 +214,8 @@ public class FragmentContextView extends FrameLayout implements NotificationCent
     private boolean checkPlayerAfterAnimation;
     private boolean checkImportAfterAnimation;
 
-    private final static float[] speeds = new float[] {
-        .5f, 1f, 1.2f, 1.5f, 1.7f, 2f
+    private final static float[] speeds = new float[]{
+            .5f, 1f, 1.2f, 1.5f, 1.7f, 2f
     };
 
     @Override
@@ -236,6 +240,8 @@ public class FragmentContextView extends FrameLayout implements NotificationCent
 
     public interface FragmentContextViewDelegate {
         void onAnimation(boolean start, boolean show);
+
+        void onShowNotifyLiveStream();
     }
 
     public FragmentContextView(Context context, BaseFragment parentFragment, boolean location) {
@@ -330,6 +336,31 @@ public class FragmentContextView extends FrameLayout implements NotificationCent
                 }
             }
         };
+        frameLayout.setOnClickListener(v -> {
+            ChatObject.Call call = chatActivity.getGroupCall();
+            if (call == null || !call.isScheduled()) {
+                return;
+            }
+            if (!call.call.schedule_start_subscribed) {
+                TLRPC.TL_phone_toggleGroupCallStartSubscription req = new TLRPC.TL_phone_toggleGroupCallStartSubscription();
+                req.call = call.getInputGroupCall();
+                req.subscribed = !call.call.schedule_start_subscribed;
+                AccountInstance accountInstance = AccountInstance.getInstance(account);
+                accountInstance.getConnectionsManager().sendRequest(req, (response, error) -> {
+                    if (response != null) {
+                        accountInstance.getMessagesController().processUpdates((TLRPC.Updates) response, false);
+                        AndroidUtilities.runOnUIThread(() -> {
+                            if (delegate != null) {
+                                delegate.onShowNotifyLiveStream();
+                            }
+                        });
+                    }
+                });
+            } else {
+                callOnClick();
+            }
+            frameLayout.invalidate();
+        });
         addView(frameLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 36, Gravity.TOP | Gravity.LEFT, 0, 0, 0, 0));
 
         selector = new View(context);
@@ -448,10 +479,10 @@ public class FragmentContextView extends FrameLayout implements NotificationCent
             private void updateJoinButtonWidth(int width) {
                 if (joinButtonWidth != width) {
                     titleTextView.setPadding(
-                        titleTextView.getPaddingLeft(),
-                        titleTextView.getPaddingTop(),
-                        titleTextView.getPaddingRight() - joinButtonWidth + width,
-                        titleTextView.getPaddingBottom()
+                            titleTextView.getPaddingLeft(),
+                            titleTextView.getPaddingTop(),
+                            titleTextView.getPaddingRight() - joinButtonWidth + width,
+                            titleTextView.getPaddingBottom()
                     );
                     joinButtonWidth = width;
                 }
@@ -774,7 +805,7 @@ public class FragmentContextView extends FrameLayout implements NotificationCent
             }
         });
         playbackSpeedButton.setIcon(speedIcon = new SpeedIconDrawable(true));
-        final float[] toggleSpeeds = new float[] { 1.0F, 1.5F, 2F };
+        final float[] toggleSpeeds = new float[]{1.0F, 1.5F, 2F};
         speedSlider = new ActionBarMenuSlider.SpeedSlider(getContext(), resourcesProvider);
         speedSlider.setRoundRadiusDp(6);
         speedSlider.setDrawShadow(true);
@@ -862,7 +893,8 @@ public class FragmentContextView extends FrameLayout implements NotificationCent
                     if (visibility != View.VISIBLE) {
                         try {
                             ((ViewGroup) getParent()).removeView(this);
-                        } catch (Exception e) {}
+                        } catch (Exception e) {
+                        }
                     }
                 }
             };
@@ -2199,6 +2231,7 @@ public class FragmentContextView extends FrameLayout implements NotificationCent
     }
 
     private boolean flickOnAttach;
+
     private void startJoinFlickerAnimation() {
         if (joinButtonFlicker != null && joinButtonFlicker.getProgress() >= 1) {
             flickOnAttach = false;

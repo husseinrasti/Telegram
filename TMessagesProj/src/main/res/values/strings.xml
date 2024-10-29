@@ -7556,6 +7556,8 @@
     <string name="NotificationReactionsMessages">Messages</string>
     <string name="NotificationReactionsStories">Stories</string>
     <string name="NotifyMeAbout">Notify me about…</string>
+    <string name="NotifyMe">Notify Me</string>
+    <string name="NotifyUserWhenLiveStreamStarts">You will be notified when the live stream starts.</string>
     <string name="NotifyMeAboutPrivate">New Messages in Private Chats</string>
     <string name="NotifyMeAboutNewStories">New Stories</string>
     <string name="NotifyMeAboutImportantStories">Important Stories</string>
