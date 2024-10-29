@@ -7084,6 +7084,22 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             contentView.addView(fragmentLocationContextView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 38, Gravity.TOP | Gravity.LEFT, 0, -36, 0, 0));
             contentView.addView(fragmentContextView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 38, Gravity.TOP | Gravity.LEFT, 0, -36, 0, 0));
 
+            fragmentContextView.setDelegate(new FragmentContextView.FragmentContextViewDelegate() {
+                @Override
+                public void onAnimation(boolean start, boolean show) {
+
+                }
+
+                @Override
+                public void onShowNotifyLiveStream() {
+                    BulletinFactory.of(ChatActivity.this)
+                            .createSimpleLayoutBulletin(
+                                    R.drawable.input_notify_on,
+                                    LocaleController.getString(R.string.NotifyUserWhenLiveStreamStarts)
+                            ).show();
+                }
+            });
+
             fragmentContextView.setAdditionalContextView(fragmentLocationContextView);
             fragmentLocationContextView.setAdditionalContextView(fragmentContextView);
 

@@ -192,6 +192,16 @@ public final class BulletinFactory {
         this.resourcesProvider = resourcesProvider;
     }
 
+    public Bulletin createSimpleLayoutBulletin(int iconRawId, CharSequence text) {
+        final Bulletin.SimpleLayout layout = new Bulletin.SimpleLayout(getContext(), resourcesProvider);
+        layout.imageView.setImageResource(iconRawId);
+        layout.textView.setText(text);
+        layout.textView.setSingleLine(false);
+        layout.textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        layout.textView.setMaxLines(4);
+        return create(layout, text.length() < 20 ? Bulletin.DURATION_SHORT : Bulletin.DURATION_LONG);
+    }
+
     public Bulletin createSimpleBulletin(int iconRawId, CharSequence text) {
         return createSimpleBulletinWithIconSize(iconRawId, text, 36);
     }
