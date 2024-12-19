@@ -19,7 +19,6 @@ import android.graphics.RectF;
 import android.graphics.RenderNode;
 import android.graphics.Shader;
 import android.net.Uri;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
@@ -835,8 +834,17 @@ public class CollageLayoutView2 extends FrameLayout implements ItemOptions.Scrim
 
     public Part longPressedPart;
 
+    private boolean returnTouchEvent = false;
+
+    public void setReturnTouchEvent(boolean returnTouchEvent) {
+        this.returnTouchEvent = returnTouchEvent;
+    }
+
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
+        if (returnTouchEvent) {
+            return super.dispatchTouchEvent(event);
+        }
         if (!hasLayout() || preview) {
             return super.dispatchTouchEvent(event);
         }

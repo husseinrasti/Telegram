@@ -47,7 +47,6 @@ import android.text.Layout;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.TextUtils;
-import android.util.Log;
 import android.util.Pair;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
@@ -1351,7 +1350,6 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         });
         gridView.setLayoutManager(layoutManager);
         gridView.setOnItemClickListener((view, position, x, y) -> {
-            Log.i("TAG", "setOnItemClickListener: #1");
             if (!mediaEnabled || parentAlert.destroyed) {
                 return;
             }
@@ -1385,9 +1383,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                     return;
                 }
             }
-            Log.i("TAG", "setOnItemClickListener: #2");
             if (position != 0 || !needCamera || selectedAlbumEntry != galleryAlbumEntry) {
-                Log.i("TAG", "setOnItemClickListener: #3");
                 if (selectedAlbumEntry == galleryAlbumEntry && needCamera) {
                     position--;
                 }
@@ -1500,7 +1496,6 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                     }
                 }, hasSpoiler ? 250 : 0);
             } else {
-                Log.i("TAG", "setOnItemClickListener: #4");
                 if (SharedConfig.inappCamera) {
                     openCamera(true);
                 } else {
@@ -1644,11 +1639,6 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         collageLayoutView.setResetState(() -> {
             updateActionBarButtons(true);
         });
-//        collageLayoutView.setOnClickListener(v -> {
-//            if (!cameraOpened && collageLayoutView.hasLayout() && cameraView != null) {
-//            openCamera(true);
-//            }
-//        });
 
         cameraHint = new HintView2(context, HintView2.DIRECTION_BOTTOM)
                 .setMultilineText(true)
@@ -3385,7 +3375,6 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
     boolean cameraExpanded;
 
     private void openCamera(boolean animated) {
-        Log.i("TAG", "openCamera: #1");
         if (cameraView == null || collageLayoutView == null || cameraInitAnimation != null || parentAlert.isDismissed()) {
             return;
         }
@@ -3491,7 +3480,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         if (!LiteMode.isEnabled(LiteMode.FLAGS_CHAT) && cameraView != null && cameraView.isInited()) {
             cameraView.showTexture(true, animated);
         }
-        Log.i("TAG", "openCamera: #2");
+        collageLayoutView.setReturnTouchEvent(false);
     }
 
     public void loadGalleryPhotos() {
@@ -4004,10 +3993,10 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         if (Build.VERSION.SDK_INT >= 19) {
             gridView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_AUTO);
         }
-
         if (!LiteMode.isEnabled(LiteMode.FLAGS_CHAT) && cameraView != null) {
             cameraView.showTexture(false, animated);
         }
+        collageLayoutView.setReturnTouchEvent(true);
     }
 
     float animationClipTop;
