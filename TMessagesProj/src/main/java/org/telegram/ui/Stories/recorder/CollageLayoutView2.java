@@ -649,7 +649,7 @@ public class CollageLayoutView2 extends FrameLayout implements ItemOptions.Scrim
         return false;
     }
 
-    public void setCameraView(CameraView cameraView, boolean isNeedAddView) {
+    public void setCameraView(CameraView cameraView) {
         if (this.cameraView != cameraView && this.cameraView != null) {
             this.cameraView.unlistenDraw(this::invalidate);
             AndroidUtilities.removeFromParent(this.cameraView);
@@ -657,7 +657,7 @@ public class CollageLayoutView2 extends FrameLayout implements ItemOptions.Scrim
             updateCameraNeedsBlur();
         }
         this.cameraView = cameraView;
-        if (cameraView != null && isNeedAddView) {
+        if (cameraView != null) {
             addView(cameraView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.FILL));
         }
 

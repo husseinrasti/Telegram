@@ -5961,7 +5961,7 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
         setActionBarButtonVisible(dualButton, cameraView.dualAvailable() && currentPage == PAGE_CAMERA, true);
         collageButton.setTranslationX(cameraView.dualAvailable() ? 0 : dp(46));
 //        collageLayoutView.getLast().addView(cameraView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.FILL));
-        collageLayoutView.setCameraView(cameraView, true);
+        collageLayoutView.setCameraView(cameraView);
         if (MessagesController.getGlobalMainSettings().getInt("storyhint2", 0) < 1) {
             cameraHint.show();
             MessagesController.getGlobalMainSettings().edit().putInt("storyhint2", MessagesController.getGlobalMainSettings().getInt("storyhint2", 0) + 1).apply();
@@ -6138,7 +6138,7 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
                         cameraView.destroy(true, null);
                         AndroidUtilities.removeFromParent(cameraView);
                         if (collageLayoutView != null) {
-                            collageLayoutView.setCameraView(null , true);
+                            collageLayoutView.setCameraView(null);
                         }
                         cameraView = null;
                     }
@@ -6150,7 +6150,7 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
                 cameraView.destroy(true, null);
                 AndroidUtilities.removeFromParent(cameraView);
                 if (collageLayoutView != null) {
-                    collageLayoutView.setCameraView(null, true);
+                    collageLayoutView.setCameraView(null);
                 }
                 cameraView = null;
             }
