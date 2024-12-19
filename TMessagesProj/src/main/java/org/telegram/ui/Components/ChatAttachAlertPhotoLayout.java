@@ -47,6 +47,7 @@ import android.text.Layout;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Pair;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
@@ -460,7 +461,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         public boolean dispatchKeyEventPreIme(KeyEvent event) {
             if (event != null && event.getKeyCode()
                     == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
-                onBackPressed();
+                closeCamera(true);
                 return true;
             }
             return super.dispatchKeyEventPreIme(event);
@@ -528,6 +529,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
 
             @Override
             public boolean onScroll(@NonNull MotionEvent e1, @NonNull MotionEvent e2, float distanceX, float distanceY) {
+                if (!cameraOpened) return false;
                 if (recordControl.isTouch() || cameraView != null && cameraView.isDualTouch() || scaling || zoomControlView != null && zoomControlView.isTouch() || inCheck()) {
                     return false;
                 }
@@ -544,11 +546,13 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                     }
                 }
                 if (scrollingY) {
-                    int galleryMax = windowCameraView.getMeasuredHeight() - (int) (AndroidUtilities.displaySize.y * 0.35f) - (AndroidUtilities.statusBarHeight + ActionBar.getCurrentActionBarHeight());
-                    ty -= distanceY;
-                    ty = Math.max(-galleryMax, ty);
-                    if (ty >= 0) {
-                        containerCameraView.setTranslationY(ty);
+                    if (collageLayoutView != null) {
+                        int galleryMax = collageLayoutView.getMeasuredHeight() - (int) (AndroidUtilities.displaySize.y * 0.35f) - (AndroidUtilities.statusBarHeight + ActionBar.getCurrentActionBarHeight());
+                        ty -= distanceY;
+                        ty = Math.max(-galleryMax, ty);
+                        if (ty >= 0) {
+                            collageLayoutView.setTranslationY(ty);
+                        }
                     }
                 }
                 if (!scrollingY) {
@@ -1347,6 +1351,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         });
         gridView.setLayoutManager(layoutManager);
         gridView.setOnItemClickListener((view, position, x, y) -> {
+            Log.i("TAG", "setOnItemClickListener: #1");
             if (!mediaEnabled || parentAlert.destroyed) {
                 return;
             }
@@ -1380,7 +1385,9 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                     return;
                 }
             }
+            Log.i("TAG", "setOnItemClickListener: #2");
             if (position != 0 || !needCamera || selectedAlbumEntry != galleryAlbumEntry) {
+                Log.i("TAG", "setOnItemClickListener: #3");
                 if (selectedAlbumEntry == galleryAlbumEntry && needCamera) {
                     position--;
                 }
@@ -1493,6 +1500,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                     }
                 }, hasSpoiler ? 250 : 0);
             } else {
+                Log.i("TAG", "setOnItemClickListener: #4");
                 if (SharedConfig.inappCamera) {
                     openCamera(true);
                 } else {
@@ -1636,7 +1644,11 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         collageLayoutView.setResetState(() -> {
             updateActionBarButtons(true);
         });
-//        containerCameraView.addView(collageLayoutView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.FILL));
+//        collageLayoutView.setOnClickListener(v -> {
+//            if (!cameraOpened && collageLayoutView.hasLayout() && cameraView != null) {
+//            openCamera(true);
+//            }
+//        });
 
         cameraHint = new HintView2(context, HintView2.DIRECTION_BOTTOM)
                 .setMultilineText(true)
@@ -2029,7 +2041,11 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                         outputFile = AndroidUtilities.generatePicturePath(parentAlert.baseFragment instanceof ChatActivity && ((ChatActivity) parentAlert.baseFragment).isSecretChat(), null);
                     }
                 }
+//                if (isVideo) {
+//                    outputEntry.wouldBeVideo(outputFile);
+//                } else {
                 outputEntry.buildPhoto(outputFile);
+//                }
                 int w = -1, h = -1;
                 try {
                     BitmapFactory.Options opts = new BitmapFactory.Options();
@@ -2978,118 +2994,6 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         }
     }
 
-    private boolean processTouchEvent(MotionEvent event) {
-        if (event == null) {
-            return false;
-        }
-        if (!pressed && event.getActionMasked() == MotionEvent.ACTION_DOWN || event.getActionMasked() == MotionEvent.ACTION_POINTER_DOWN) {
-            zoomControlView.getHitRect(hitRect);
-            if (zoomControlView.getTag() != null && hitRect.contains((int) event.getX(), (int) event.getY())) {
-                return false;
-            }
-            if (!takingPhoto && !dragging) {
-                if (event.getPointerCount() == 2) {
-                    pinchStartDistance = (float) Math.hypot(event.getX(1) - event.getX(0), event.getY(1) - event.getY(0));
-                    zooming = true;
-                } else {
-                    maybeStartDraging = true;
-                    lastY = event.getY();
-                    zooming = false;
-                }
-                zoomWas = false;
-                pressed = true;
-            }
-        } else if (pressed) {
-            if (event.getActionMasked() == MotionEvent.ACTION_MOVE) {
-                if (zooming && event.getPointerCount() == 2 && !dragging) {
-                    float newDistance = (float) Math.hypot(event.getX(1) - event.getX(0), event.getY(1) - event.getY(0));
-                    if (!zoomWas) {
-                        if (Math.abs(newDistance - pinchStartDistance) >= AndroidUtilities.getPixelsInCM(0.4f, false)) {
-                            pinchStartDistance = newDistance;
-                            zoomWas = true;
-                        }
-                    } else {
-                        if (cameraView != null) {
-                            float diff = (newDistance - pinchStartDistance) / dp(100);
-                            pinchStartDistance = newDistance;
-                            cameraZoom += diff;
-                            if (cameraZoom < 0.0f) {
-                                cameraZoom = 0.0f;
-                            } else if (cameraZoom > 1.0f) {
-                                cameraZoom = 1.0f;
-                            }
-                            zoomControlView.setZoom(cameraZoom, false);
-                            parentAlert.getSheetContainer().invalidate();
-                            cameraView.setZoom(cameraZoom);
-                            showZoomControls(true, true);
-                        }
-                    }
-                } else {
-                    float newY = event.getY();
-                    float dy = (newY - lastY);
-                    if (maybeStartDraging) {
-                        if (Math.abs(dy) > AndroidUtilities.getPixelsInCM(0.4f, false)) {
-                            maybeStartDraging = false;
-                            dragging = true;
-                        }
-                    } else if (dragging) {
-                        if (cameraView != null) {
-                            cameraView.setTranslationY(cameraView.getTranslationY() + dy);
-                            lastY = newY;
-                            if (zoomControlHideRunnable != null) {
-                                AndroidUtilities.cancelRunOnUIThread(zoomControlHideRunnable);
-                                zoomControlHideRunnable = null;
-                            }
-                            if (containerCameraView.getTag() == null) {
-                                containerCameraView.setTag(1);
-                                AnimatorSet animatorSet = new AnimatorSet();
-                                animatorSet.playTogether(
-                                        ObjectAnimator.ofFloat(containerCameraView, View.ALPHA, 0.0f),
-                                        ObjectAnimator.ofFloat(windowCameraView, View.ALPHA, 0.0f),
-                                        ObjectAnimator.ofFloat(counterTextView, View.ALPHA, 0.0f),
-                                        ObjectAnimator.ofFloat(cameraPhotoRecyclerView, View.ALPHA, 0.0f));
-                                animatorSet.setDuration(220);
-                                animatorSet.setInterpolator(CubicBezierInterpolator.DEFAULT);
-                                animatorSet.start();
-                            }
-                        }
-                    }
-                }
-            } else if (event.getActionMasked() == MotionEvent.ACTION_CANCEL || event.getActionMasked() == MotionEvent.ACTION_UP || event.getActionMasked() == MotionEvent.ACTION_POINTER_UP) {
-                pressed = false;
-                zooming = false;
-                if (zooming) {
-                    zooming = false;
-                } else if (dragging) {
-                    dragging = false;
-                    if (cameraView != null) {
-                        if (Math.abs(cameraView.getTranslationY()) > cameraView.getMeasuredHeight() / 6.0f) {
-                            closeCamera(true);
-                        } else {
-                            AnimatorSet animatorSet = new AnimatorSet();
-                            animatorSet.playTogether(
-                                    ObjectAnimator.ofFloat(cameraView, View.TRANSLATION_Y, 0.0f),
-                                    ObjectAnimator.ofFloat(containerCameraView, View.ALPHA, 1.0f),
-                                    ObjectAnimator.ofFloat(windowCameraView, View.ALPHA, 1.0f),
-                                    ObjectAnimator.ofFloat(counterTextView, View.ALPHA, 1.0f),
-                                    ObjectAnimator.ofFloat(cameraPhotoRecyclerView, View.ALPHA, 1.0f));
-                            animatorSet.setDuration(250);
-                            animatorSet.setInterpolator(interpolator);
-                            animatorSet.start();
-                            containerCameraView.setTag(null);
-                        }
-                    }
-                } else if (cameraView != null && !zoomWas) {
-                    cameraView.getLocationOnScreen(viewPosition);
-                    float viewX = event.getRawX() - viewPosition[0];
-                    float viewY = event.getRawY() - viewPosition[1];
-                    cameraView.focusToPoint((int) viewX, (int) viewY);
-                }
-            }
-        }
-        return true;
-    }
-
     private void resetRecordState() {
         if (parentAlert.destroyed) {
             return;
@@ -3481,6 +3385,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
     boolean cameraExpanded;
 
     private void openCamera(boolean animated) {
+        Log.i("TAG", "openCamera: #1");
         if (cameraView == null || collageLayoutView == null || cameraInitAnimation != null || parentAlert.isDismissed()) {
             return;
         }
@@ -3501,9 +3406,9 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         if (parentAlert.getCommentView().isKeyboardVisible() && isFocusable()) {
             parentAlert.getCommentView().closeKeyboard();
         }
-        containerCameraView.setVisibility(View.VISIBLE);
-        containerCameraView.setTag(null);
         windowCameraView.setVisibility(View.VISIBLE);
+        windowCameraView.setTag(null);
+        containerCameraView.setVisibility(View.VISIBLE);
         controlContainer.setVisibility(View.VISIBLE);
         actionBarContainer.setVisibility(View.VISIBLE);
         navbarContainer.setVisibility(View.VISIBLE);
@@ -3549,9 +3454,9 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                     windowCameraView.invalidate();
                     if (cameraView != null) {
                         if (Build.VERSION.SDK_INT >= 21) {
-                            cameraView.invalidateOutline();
+                            collageLayoutView.invalidateOutline();
                         } else {
-                            cameraView.invalidate();
+                            collageLayoutView.invalidate();
                         }
                     }
                     if (cameraOpened) {
@@ -3586,6 +3491,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         if (!LiteMode.isEnabled(LiteMode.FLAGS_CHAT) && cameraView != null && cameraView.isInited()) {
             cameraView.showTexture(true, animated);
         }
+        Log.i("TAG", "openCamera: #2");
     }
 
     public void loadGalleryPhotos() {
@@ -3669,7 +3575,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                     if (Build.VERSION.SDK_INT >= 21) {
                         super.dispatchDraw(canvas);
                     } else {
-                        int maxY = (int) Math.min(parentAlert.getCommentTextViewTop() + currentPanTranslationY + parentAlert.getContainerView().getTranslationY() - cameraView.getTranslationY() - (parentAlert.mentionContainer != null ? parentAlert.mentionContainer.clipBottom() + dp(8) : 0), getMeasuredHeight());
+                        int maxY = (int) Math.min(parentAlert.getCommentTextViewTop() + currentPanTranslationY + parentAlert.getContainerView().getTranslationY() - collageLayoutView.getTranslationY() - (parentAlert.mentionContainer != null ? parentAlert.mentionContainer.clipBottom() + dp(8) : 0), getMeasuredHeight());
                         if (cameraAnimationInProgress) {
                             AndroidUtilities.rectTmp.set(animationClipLeft + cameraViewOffsetX * (1f - cameraOpenProgress), animationClipTop + cameraViewOffsetY * (1f - cameraOpenProgress), animationClipRight, Math.min(maxY, animationClipBottom));
                         } else if (!cameraAnimationInProgress && !cameraOpened) {
@@ -3709,7 +3615,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                 cameraView.setOutlineProvider(new ViewOutlineProvider() {
                     @Override
                     public void getOutline(View view, Outline outline) {
-                        int maxY = (int) Math.min(parentAlert.getCommentTextViewTop() - (parentAlert.mentionContainer != null ? parentAlert.mentionContainer.clipBottom() + dp(8) : 0) + currentPanTranslationY + parentAlert.getContainerView().getTranslationY() - cameraView.getTranslationY(), view.getMeasuredHeight());
+                        int maxY = (int) Math.min(parentAlert.getCommentTextViewTop() - (parentAlert.mentionContainer != null ? parentAlert.mentionContainer.clipBottom() + dp(8) : 0) + currentPanTranslationY + parentAlert.getContainerView().getTranslationY() - collageLayoutView.getTranslationY(), view.getMeasuredHeight());
                         if (cameraOpened) {
                             maxY = view.getMeasuredHeight();
                         } else if (cameraAnimationInProgress) {
@@ -3744,7 +3650,6 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                     cameraInitAnimation = new AnimatorSet();
                     cameraInitAnimation.playTogether(
                             ObjectAnimator.ofFloat(collageLayoutView, View.ALPHA, 0.0f, 1.0f),
-                            ObjectAnimator.ofFloat(cameraView, View.ALPHA, 0.0f, 1.0f),
                             ObjectAnimator.ofFloat(cameraIcon, View.ALPHA, 0.0f, 1.0f));
                     cameraInitAnimation.setDuration(180);
                     cameraInitAnimation.addListener(new AnimatorListenerAdapter() {
@@ -3779,7 +3684,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                 cameraIcon = new FrameLayout(getContext()) {
                     @Override
                     protected void onDraw(Canvas canvas) {
-                        int maxY = (int) Math.min(parentAlert.getCommentTextViewTop() + currentPanTranslationY + parentAlert.getContainerView().getTranslationY() - cameraView.getTranslationY(), getMeasuredHeight());
+                        int maxY = (int) Math.min(parentAlert.getCommentTextViewTop() + currentPanTranslationY + parentAlert.getContainerView().getTranslationY() - collageLayoutView.getTranslationY(), getMeasuredHeight());
                         if (cameraOpened) {
                             maxY = getMeasuredHeight();
                         } else if (cameraAnimationInProgress) {
@@ -3809,14 +3714,14 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
             }
             parentAlert.getContainer().addView(cameraIcon, 2, new FrameLayout.LayoutParams(itemSize, itemSize));
 
-            cameraView.setAlpha(mediaEnabled ? 1.0f : 0.2f);
-            cameraView.setEnabled(mediaEnabled);
+//            cameraView.setAlpha(mediaEnabled ? 1.0f : 0.2f);
+//            cameraView.setEnabled(mediaEnabled);
             collageLayoutView.setAlpha(mediaEnabled ? 1.0f : 0.2f);
             collageLayoutView.setEnabled(mediaEnabled);
             cameraIcon.setAlpha(mediaEnabled ? 1.0f : 0.2f);
             cameraIcon.setEnabled(mediaEnabled);
             if (isHidden) {
-                cameraView.setVisibility(GONE);
+//                cameraView.setVisibility(GONE);
                 collageLayoutView.setVisibility(GONE);
                 cameraIcon.setVisibility(GONE);
             }
@@ -3832,8 +3737,8 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
             cameraZoom = 0.0f;
         }
         if (!cameraOpened) {
-            cameraView.setTranslationX(cameraViewLocation[0]);
-            cameraView.setTranslationY(cameraViewLocation[1] + currentPanTranslationY);
+            collageLayoutView.setTranslationX(cameraViewLocation[0]);
+            collageLayoutView.setTranslationY(cameraViewLocation[1] + currentPanTranslationY);
             cameraIcon.setTranslationX(cameraViewLocation[0]);
             cameraIcon.setTranslationY(cameraViewLocation[1] + cameraViewOffsetY + currentPanTranslationY);
         }
@@ -4018,12 +3923,11 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         }, 16);
         AndroidUtilities.setLightNavigationBar(parentAlert.getWindow(), AndroidUtilities.computePerceivedBrightness(getThemedColor(Theme.key_windowBackgroundGray)) > 0.721);
         if (animated) {
-            additionCloseCameraY = cameraView.getTranslationY();
+            additionCloseCameraY = collageLayoutView.getTranslationY();
 
             cameraAnimationInProgress = true;
             ArrayList<Animator> animators = new ArrayList<>();
             animators.add(ObjectAnimator.ofFloat(this, "cameraOpenProgress", 0.0f));
-            animators.add(ObjectAnimator.ofFloat(containerCameraView, View.ALPHA, 0.0f));
             animators.add(ObjectAnimator.ofFloat(windowCameraView, View.ALPHA, 0.0f));
             animators.add(ObjectAnimator.ofFloat(hintTextView, View.ALPHA, 0));
             animators.add(ObjectAnimator.ofFloat(titleTextView, View.ALPHA, 0));
@@ -4045,9 +3949,9 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                     cameraAnimationInProgress = false;
                     if (cameraView != null) {
                         if (Build.VERSION.SDK_INT >= 21) {
-                            cameraView.invalidateOutline();
+                            collageLayoutView.invalidateOutline();
                         } else {
-                            cameraView.invalidate();
+                            collageLayoutView.invalidate();
                         }
                     }
                     cameraOpened = false;
@@ -4135,10 +4039,16 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
 
 
         int cameraViewW, cameraViewH;
-        FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) cameraView.getLayoutParams();
+        FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) collageLayoutView.getLayoutParams();
 
-        float textureStartHeight = cameraView.getTextureHeight(startWidth, startHeight);
-        float textureEndHeight = cameraView.getTextureHeight(endWidth, endHeight);
+//        float textureStartHeight = cameraView.getTextureHeight(startWidth, startHeight);
+//        float textureEndHeight = cameraView.getTextureHeight(endWidth, endHeight);
+        int frameWidth = collageLayoutView.getWidth(), frameHeight = collageLayoutView.getHeight();
+        float ssh = Math.max(startWidth / (float) frameWidth, startHeight / (float) frameHeight);
+        float textureStartHeight = (int) (ssh * frameHeight);
+
+        float seh = Math.max(endWidth / (float) frameWidth, endHeight / (float) frameHeight);
+        float textureEndHeight = (int) (seh * frameHeight);
 
         float fromScale = textureStartHeight / textureEndHeight;
         float fromScaleY = startHeight / endHeight;
@@ -4150,6 +4060,8 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
             final float s = fromScale * (1f - value) + value;
             cameraView.getTextureView().setScaleX(s);
             cameraView.getTextureView().setScaleY(s);
+            collageLayoutView.setScaleY(s);
+            collageLayoutView.setScaleX(s);
 
             final float sX = fromScaleX * (1f - value) + value;
             final float sY = fromScaleY * (1f - value) + value;
@@ -4157,25 +4069,27 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
             final float scaleOffsetY = (1 - sY) * endHeight / 2;
             final float scaleOffsetX = (1 - sX) * endWidth / 2;
 
-            cameraView.setTranslationX(fromX * (1f - value) + toX * value - scaleOffsetX);
-            cameraView.setTranslationY(fromY * (1f - value) + toY * value - scaleOffsetY);
-            animationClipTop = fromY * (1f - value) - cameraView.getTranslationY();
-            animationClipBottom = ((fromY + startHeight) * (1f - value) - cameraView.getTranslationY()) + endHeight * value;
+            collageLayoutView.setTranslationX(fromX * (1f - value) + toX * value - scaleOffsetX);
+            collageLayoutView.setTranslationY(fromY * (1f - value) + toY * value - scaleOffsetY);
+            animationClipTop = fromY * (1f - value) - collageLayoutView.getTranslationY();
+            animationClipBottom = ((fromY + startHeight) * (1f - value) - collageLayoutView.getTranslationY()) + endHeight * value;
 
-            animationClipLeft = fromX * (1f - value) - cameraView.getTranslationX();
-            animationClipRight = ((fromX + startWidth) * (1f - value) - cameraView.getTranslationX()) + endWidth * value;
+            animationClipLeft = fromX * (1f - value) - collageLayoutView.getTranslationX();
+            animationClipRight = ((fromX + startWidth) * (1f - value) - collageLayoutView.getTranslationX()) + endWidth * value;
         } else {
             cameraViewW = (int) startWidth;
             cameraViewH = (int) startHeight;
             cameraView.getTextureView().setScaleX(1f);
             cameraView.getTextureView().setScaleY(1f);
+            collageLayoutView.setScaleY(1f);
+            collageLayoutView.setScaleX(1f);
             animationClipTop = 0;
             animationClipBottom = endHeight;
             animationClipLeft = 0;
             animationClipRight = endWidth;
 
-            cameraView.setTranslationX(fromX);
-            cameraView.setTranslationY(fromY);
+            collageLayoutView.setTranslationX(fromX);
+            collageLayoutView.setTranslationY(fromY);
         }
 
         if (value <= 0.5f) {
@@ -4187,12 +4101,16 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         if (layoutParams.width != cameraViewW || layoutParams.height != cameraViewH) {
             layoutParams.width = cameraViewW;
             layoutParams.height = cameraViewH;
+            cameraView.setLayoutParams(layoutParams);
             cameraView.requestLayout();
+            collageLayoutView.requestLayout();
         }
         if (Build.VERSION.SDK_INT >= 21) {
             cameraView.invalidateOutline();
+            collageLayoutView.invalidateOutline();
         } else {
             cameraView.invalidate();
+            collageLayoutView.invalidate();
         }
     }
 
@@ -4207,7 +4125,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         }
         if (Build.VERSION.SDK_INT >= 21) {
             if (cameraView != null) {
-                cameraView.invalidateOutline();
+                collageLayoutView.invalidateOutline();
             }
             RecyclerView.ViewHolder holder = gridView.findViewHolderForAdapterPosition(itemsPerRow - 1);
             if (holder != null) {
@@ -4221,7 +4139,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
             }
         }
         if (cameraView != null) {
-            cameraView.invalidate();
+            collageLayoutView.invalidate();
         }
 
         if (!deviceHasGoodCamera) {
@@ -4259,9 +4177,9 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                     cameraViewOffsetY = newCameraViewOffsetY;
                     if (cameraView != null) {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                            cameraView.invalidateOutline();
+                            collageLayoutView.invalidateOutline();
                         } else {
-                            cameraView.invalidate();
+                            collageLayoutView.invalidate();
                         }
                     }
                     if (cameraIcon != null) {
@@ -4294,9 +4212,9 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
             cameraViewOffsetY = 0;
             if (cameraView != null) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    cameraView.invalidateOutline();
+                    collageLayoutView.invalidateOutline();
                 } else {
-                    cameraView.invalidate();
+                    collageLayoutView.invalidate();
                 }
             }
             if (cameraIcon != null) {
@@ -4313,8 +4231,8 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
     private void applyCameraViewPosition() {
         if (cameraView != null) {
             if (!cameraOpened) {
-                cameraView.setTranslationX(cameraViewLocation[0]);
-                cameraView.setTranslationY(cameraViewLocation[1] + currentPanTranslationY);
+                collageLayoutView.setTranslationX(cameraViewLocation[0]);
+                collageLayoutView.setTranslationY(cameraViewLocation[1] + currentPanTranslationY);
             }
             cameraIcon.setTranslationX(cameraViewLocation[0]);
             cameraIcon.setTranslationY(cameraViewLocation[1] + cameraViewOffsetY + currentPanTranslationY);
@@ -4323,17 +4241,15 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
 
             LayoutParams layoutParams;
             if (!cameraOpened) {
-                cameraView.setClipTop((int) cameraViewOffsetY);
-                cameraView.setClipBottom((int) cameraViewOffsetBottomY);
-                layoutParams = (LayoutParams) cameraView.getLayoutParams();
+                layoutParams = (LayoutParams) collageLayoutView.getLayoutParams();
                 if (layoutParams.height != finalHeight || layoutParams.width != finalWidth) {
                     layoutParams.width = finalWidth;
                     layoutParams.height = finalHeight;
-                    cameraView.setLayoutParams(layoutParams);
+                    collageLayoutView.setLayoutParams(layoutParams);
                     final LayoutParams layoutParamsFinal = layoutParams;
                     AndroidUtilities.runOnUIThread(() -> {
-                        if (cameraView != null) {
-                            cameraView.setLayoutParams(layoutParamsFinal);
+                        if (collageLayoutView != null) {
+                            collageLayoutView.setLayoutParams(layoutParamsFinal);
                         }
                     });
                 }
@@ -4814,8 +4730,8 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         if (collageLayoutView != null && cameraView != null) {
             collageLayoutView.setAlpha(mediaEnabled ? 1.0f : 0.2f);
             collageLayoutView.setEnabled(mediaEnabled);
-            cameraView.setAlpha(mediaEnabled ? 1.0f : 0.2f);
-            cameraView.setEnabled(mediaEnabled);
+//            cameraView.setAlpha(mediaEnabled ? 1.0f : 0.2f);
+//            cameraView.setEnabled(mediaEnabled);
         }
         if (cameraIcon != null) {
             cameraIcon.setAlpha(mediaEnabled ? 1.0f : 0.2f);
@@ -4968,7 +4884,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         isHidden = false;
         if (collageLayoutView != null && cameraView != null) {
             collageLayoutView.setVisibility(VISIBLE);
-            cameraView.setVisibility(VISIBLE);
+//            cameraView.setVisibility(VISIBLE);
         }
         if (cameraIcon != null) {
             cameraIcon.setVisibility(VISIBLE);
@@ -4997,15 +4913,15 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
     public void onHideShowProgress(float progress) {
         if (collageLayoutView != null && cameraView != null) {
             collageLayoutView.setAlpha(progress);
-            cameraView.setAlpha(progress);
+//            cameraView.setAlpha(progress);
             cameraIcon.setAlpha(progress);
-            if (progress != 0 && cameraView.getVisibility() != VISIBLE) {
+            if (progress != 0 && collageLayoutView.getVisibility() != VISIBLE) {
                 collageLayoutView.setVisibility(VISIBLE);
-                cameraView.setVisibility(VISIBLE);
+//                cameraView.setVisibility(VISIBLE);
                 cameraIcon.setVisibility(VISIBLE);
-            } else if (progress == 0 && cameraView.getVisibility() != INVISIBLE) {
+            } else if (progress == 0 && collageLayoutView.getVisibility() != INVISIBLE) {
                 collageLayoutView.setVisibility(INVISIBLE);
-                cameraView.setVisibility(INVISIBLE);
+//                cameraView.setVisibility(INVISIBLE);
                 cameraIcon.setVisibility(INVISIBLE);
             }
         }
@@ -5095,7 +5011,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
     @Override
     public void onHidden() {
         if (cameraView != null) {
-            cameraView.setVisibility(GONE);
+            collageLayoutView.setVisibility(GONE);
             cameraIcon.setVisibility(GONE);
         }
         for (Map.Entry<Object, Object> en : selectedPhotos.entrySet()) {
@@ -5174,9 +5090,9 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         checkCameraViewPosition();
         if (cameraView != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                cameraView.invalidateOutline();
+                collageLayoutView.invalidateOutline();
             } else {
-                cameraView.invalidate();
+                collageLayoutView.invalidate();
             }
         }
         if (cameraIcon != null) {
@@ -5190,9 +5106,9 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         checkCameraViewPosition();
         if (cameraView != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                cameraView.invalidateOutline();
+                collageLayoutView.invalidateOutline();
             } else {
-                cameraView.invalidate();
+                collageLayoutView.invalidate();
             }
         }
         if (cameraIcon != null) {
@@ -5236,26 +5152,16 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
     }
 
     @Override
-    public boolean onContainerViewTouchEvent(MotionEvent event) {
-        if (cameraAnimationInProgress) {
-            return true;
-        } else if (cameraOpened) {
-            return processTouchEvent(event);
-        }
-        return false;
-    }
-
-    @Override
     public boolean onCustomMeasure(View view, int width, int height) {
         boolean isPortrait = width < height;
         if (view == cameraIcon) {
             cameraIcon.measure(View.MeasureSpec.makeMeasureSpec(itemSize, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec((int) (itemSize - cameraViewOffsetBottomY - cameraViewOffsetY), View.MeasureSpec.EXACTLY));
             return true;
-        } else if (view == cameraView) {
-            if (cameraOpened && !cameraAnimationInProgress) {
-                cameraView.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(height + parentAlert.getBottomInset(), View.MeasureSpec.EXACTLY));
-                return true;
-            }
+//        } else if (view == cameraView) {
+//            if (cameraOpened && !cameraAnimationInProgress) {
+//                cameraView.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(height + parentAlert.getBottomInset(), View.MeasureSpec.EXACTLY));
+//                return true;
+//            }
         } else if (view == collageLayoutView) {
             if (cameraOpened && !cameraAnimationInProgress) {
                 collageLayoutView.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(height + parentAlert.getBottomInset(), View.MeasureSpec.EXACTLY));
