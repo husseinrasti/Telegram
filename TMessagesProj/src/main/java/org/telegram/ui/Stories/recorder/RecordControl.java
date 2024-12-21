@@ -6,7 +6,6 @@ import static org.telegram.messenger.AndroidUtilities.dpf2;
 import static org.telegram.messenger.AndroidUtilities.lerp;
 import static org.telegram.messenger.Utilities.clamp;
 
-import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
@@ -17,19 +16,13 @@ import android.graphics.PorterDuffColorFilter;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RadialGradient;
 import android.graphics.Shader;
-import android.graphics.SurfaceTexture;
-import android.graphics.Xfermode;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.SystemClock;
-import android.util.Log;
 import android.view.MotionEvent;
-import android.view.TextureView;
 import android.view.View;
 import android.view.ViewConfiguration;
-import android.widget.FrameLayout;
 
-import androidx.annotation.NonNull;
 import androidx.core.graphics.ColorUtils;
 
 import com.google.zxing.common.detector.MathUtils;
@@ -40,7 +33,6 @@ import org.telegram.messenger.ImageReceiver;
 import org.telegram.messenger.MediaController;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.R;
-import org.telegram.messenger.Utilities;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.AnimatedFloat;
 import org.telegram.ui.Components.ButtonBounce;
@@ -55,17 +47,29 @@ public class RecordControl extends View implements FlashViews.Invertable {
 
     public interface Delegate {
         void onPhotoShoot();
+
         void onVideoRecordStart(boolean byLongPress, Runnable whenStarted);
+
         void onVideoRecordPause();
+
         void onVideoRecordResume();
+
         void onVideoRecordEnd(boolean byDuration);
+
         void onVideoDuration(long duration);
+
         void onGalleryClick();
+
         void onFlipClick();
+
         void onFlipLongClick();
+
         void onZoom(float zoom);
+
         void onVideoRecordLocked();
+
         boolean canRecordAudio();
+
         void onCheckClick();
     }
 
@@ -96,42 +100,42 @@ public class RecordControl extends View implements FlashViews.Invertable {
     private final static int RED = 0xFFF73131;
     private final static int BG = 0x64000000;
 
-    private final Paint mainPaint =          new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint outlinePaint =       new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint mainPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint outlineFilledPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint buttonPaint =        new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint buttonPaintWhite =   new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint redPaint =           new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint buttonPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint buttonPaintWhite = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint redPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint hintLinePaintWhite = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint hintLinePaintBlack = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint checkPaint =         new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Matrix redMatrix =         new Matrix();
+    private final Paint checkPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Matrix redMatrix = new Matrix();
     private RadialGradient redGradient;
 
-    private final ButtonBounce recordButton =  new ButtonBounce(this);
-    private final ButtonBounce flipButton =    new ButtonBounce(this);
-    private final ButtonBounce lockButton =   new ButtonBounce(this);
+    private final ButtonBounce recordButton = new ButtonBounce(this);
+    private final ButtonBounce flipButton = new ButtonBounce(this);
+    private final ButtonBounce lockButton = new ButtonBounce(this);
 
     private float flipDrawableRotate;
     private final AnimatedFloat flipDrawableRotateT = new AnimatedFloat(this, 0, 310, CubicBezierInterpolator.EASE_OUT_QUINT);
     private boolean dual;
     private final AnimatedFloat dualT = new AnimatedFloat(this, 0, 330, CubicBezierInterpolator.EASE_OUT_QUINT);
 
-    private static final long MAX_DURATION = 60 * 1000L;
+    private long maxDuration = 60 * 1000L;
     private long recordingStart;
     private long lastDuration;
 
     private final Path checkPath = new Path();
-    private final Point check1 = new Point(-dpf2(29/3.0f), dpf2(7/3.0f));
-    private final Point check2 = new Point(-dpf2(8.5f/3.0f), dpf2(26/3.0f));
-    private final Point check3 = new Point(dpf2(29/3.0f), dpf2(-11/3.0f));
+    private final Point check1 = new Point(-dpf2(29 / 3.0f), dpf2(7 / 3.0f));
+    private final Point check2 = new Point(-dpf2(8.5f / 3.0f), dpf2(26 / 3.0f));
+    private final Point check3 = new Point(dpf2(29 / 3.0f), dpf2(-11 / 3.0f));
 
     public RecordControl(Context context) {
         super(context);
 
         setWillNotDraw(false);
 
-        redGradient = new RadialGradient(0, 0, dp(30 + 18), new int[] {RED, RED, WHITE}, new float[] {0, .64f, 1f}, Shader.TileMode.CLAMP);
+        redGradient = new RadialGradient(0, 0, dp(30 + 18), new int[]{RED, RED, WHITE}, new float[]{0, .64f, 1f}, Shader.TileMode.CLAMP);
         redGradient.setLocalMatrix(redMatrix);
         redPaint.setShader(redGradient);
         outlinePaint.setColor(WHITE);
@@ -222,6 +226,10 @@ public class RecordControl extends View implements FlashViews.Invertable {
         super.onDetachedFromWindow();
     }
 
+    public void setMaxDuration(long maxDuration) {
+        this.maxDuration = maxDuration;
+    }
+
     public void setInvert(float invert) {
         outlinePaint.setColor(ColorUtils.blendARGB(WHITE, BLACK, invert));
         buttonPaint.setColor(ColorUtils.blendARGB(BG, 0x16000000, invert));
@@ -233,6 +241,7 @@ public class RecordControl extends View implements FlashViews.Invertable {
 
     public float amplitude;
     public final AnimatedFloat animatedAmplitude = new AnimatedFloat(this, 0, 200, CubicBezierInterpolator.DEFAULT);
+
     public void setAmplitude(float amplitude, boolean animated) {
         this.amplitude = amplitude;
         if (!animated) {
@@ -388,7 +397,7 @@ public class RecordControl extends View implements FlashViews.Invertable {
         }
 
         float acx = lerp(cx, recordCx.set(cx + dp(4) * touchCenterT16), touchIsCenterT);
-        float r =   lerp(lerp(dp(29), dp(12), recordingT), dp(32) - dp(4) * Math.abs(touchCenterT96), touchIsCenterT);
+        float r = lerp(lerp(dp(29), dp(12), recordingT), dp(32) - dp(4) * Math.abs(touchCenterT96), touchIsCenterT);
         float rad = lerp(lerp(dp(32), dp(7), recordingT), dp(32), touchIsCenterT);
         scale = lerp(recordButton.getScale(startModeIsVideo ? 0 : .2f), 1 + .2f * animatedAmplitude.set(amplitude), recordingT);
         AndroidUtilities.rectTmp.set(acx - r, cy - r, acx + r, cy + r);
@@ -411,7 +420,7 @@ public class RecordControl extends View implements FlashViews.Invertable {
             checkPath.rewind();
             checkPath.moveTo(check1.x, check1.y);
             checkPath.lineTo(lerp(check1.x, check2.x, clamp(check / .3f, 1.0f, 0.0f)), lerp(check1.y, check2.y, clamp(check / .3f, 1.0f, 0.0f)));
-            if (check > .3f) checkPath.lineTo(lerp(check2.x, check3.x, clamp((check-.3f) / .7f, 1.0f, 0.0f)), lerp(check2.y, check3.y, clamp((check-.3f) / .7f, 1.0f, 0.0f)));
+            if (check > .3f) checkPath.lineTo(lerp(check2.x, check3.x, clamp((check - .3f) / .7f, 1.0f, 0.0f)), lerp(check2.y, check3.y, clamp((check - .3f) / .7f, 1.0f, 0.0f)));
             canvas.translate(cx, cy);
             canvas.drawPath(checkPath, checkPaint);
         }
@@ -434,30 +443,32 @@ public class RecordControl extends View implements FlashViews.Invertable {
 
         long duration = System.currentTimeMillis() - recordingStart;
         float recordEndT = recording ? 0 : 1f - recordingLongT;
-        float sweepAngle = duration / (float) MAX_DURATION * 360;
 
         float recordingLoading = this.recordingLoadingT.set(this.recordingLoading);
 
         outlineFilledPaint.setStrokeWidth(strokeWidth);
         outlineFilledPaint.setAlpha((int) (0xFF * Math.max(.7f * recordingLoading, 1f - recordEndT)));
 
-        if (recordingLoading <= 0) {
-            canvas.drawArc(AndroidUtilities.rectTmp, -90, sweepAngle, false, outlineFilledPaint);
-        } else {
-            final long now = SystemClock.elapsedRealtime();
-            CircularProgressDrawable.getSegments((now - recordingLoadingStart) % 5400, loadingSegments);
-            invalidate();
-            float fromAngle = loadingSegments[0], toAngle = loadingSegments[1];
+        if (maxDuration != -1) {
+            float sweepAngle = duration / (float) maxDuration * 360;
+            if (recordingLoading <= 0) {
+                canvas.drawArc(AndroidUtilities.rectTmp, -90, sweepAngle, false, outlineFilledPaint);
+            } else {
+                final long now = SystemClock.elapsedRealtime();
+                CircularProgressDrawable.getSegments((now - recordingLoadingStart) % 5400, loadingSegments);
+                invalidate();
+                float fromAngle = loadingSegments[0], toAngle = loadingSegments[1];
 
-            float center = (fromAngle + toAngle) / 2f;
-            float amplitude = Math.abs(toAngle - fromAngle) / 2f;
+                float center = (fromAngle + toAngle) / 2f;
+                float amplitude = Math.abs(toAngle - fromAngle) / 2f;
 
-            if (this.recordingLoading) {
-                center = lerp(-90 + sweepAngle / 2f, center, recordingLoading);
-                amplitude = lerp(sweepAngle / 2f, amplitude, recordingLoading);
+                if (this.recordingLoading) {
+                    center = lerp(-90 + sweepAngle / 2f, center, recordingLoading);
+                    amplitude = lerp(sweepAngle / 2f, amplitude, recordingLoading);
+                }
+
+                canvas.drawArc(AndroidUtilities.rectTmp, center - amplitude, amplitude * 2, false, outlineFilledPaint);
             }
-
-            canvas.drawArc(AndroidUtilities.rectTmp, center - amplitude, amplitude * 2, false, outlineFilledPaint);
         }
 
         if (recording) {
@@ -466,7 +477,7 @@ public class RecordControl extends View implements FlashViews.Invertable {
             if (duration / 1000L != lastDuration / 1000L) {
                 delegate.onVideoDuration(duration / 1000L);
             }
-            if (duration >= MAX_DURATION) {
+            if (maxDuration != -1 && duration >= maxDuration) {
                 post(() -> {
                     recording = false;
                     longpressRecording = false;
@@ -526,18 +537,18 @@ public class RecordControl extends View implements FlashViews.Invertable {
         final float tr;
         if (longpressRecording && !hasCheck()) {
             tr = (
-                touchT *
-                isVideo *
-                recordingT *
-                lerp(
-                    dp(16),
-                    lerp(
-                        dp(8) + dp(8) * Math.abs(touchCenterT96),
-                        dp(22),
-                        touchIsButtonT
-                    ),
-                    Math.max(touchIsButtonT, touchIsCenterT)
-                )
+                    touchT *
+                            isVideo *
+                            recordingT *
+                            lerp(
+                                    dp(16),
+                                    lerp(
+                                            dp(8) + dp(8) * Math.abs(touchCenterT96),
+                                            dp(22),
+                                            touchIsButtonT
+                                    ),
+                                    Math.max(touchIsButtonT, touchIsCenterT)
+                            )
             );
         } else {
             tr = 0;
@@ -607,7 +618,8 @@ public class RecordControl extends View implements FlashViews.Invertable {
             }
         }
         if (tr > 0 || locked > 0) {
-            scale = lockButton.getScale(.2f) * recordingT * (1.0f - check);;
+            scale = lockButton.getScale(.2f) * recordingT * (1.0f - check);
+            ;
             canvas.save();
             circlePath.rewind();
             if (tr > 0) {
@@ -643,6 +655,7 @@ public class RecordControl extends View implements FlashViews.Invertable {
     }
 
     private final Point p1 = new Point(), p2 = new Point(), p3 = new Point(), p4 = new Point(), h1 = new Point(), h2 = new Point(), h3 = new Point(), h4 = new Point();
+
     private void getVector(float cx, float cy, double a, float r, Point point) {
         point.x = (float) (cx + Math.cos(a) * r);
         point.y = (float) (cy + Math.sin(a) * r);
