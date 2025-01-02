@@ -571,6 +571,7 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
     }
 
     private final ArrayList<Integer> filteredMessagesUpdatedPosition = new ArrayList<>();
+
     private void filterDeletedMessages() {
         ArrayList<MessageObject> newFilteredMessages = new ArrayList<>();
 
@@ -635,6 +636,7 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
     }
 
     private final LongSparseArray<Integer> stableIdByEventExpand = new LongSparseArray<>();
+
     private MessageObject actionMessagesDeletedBy(long eventId, long user_id, ArrayList<MessageObject> messages, boolean expanded, boolean expandable) {
         MessageObject messageObject = null;
         for (int i = 0; i < filteredMessages.size(); ++i) {
@@ -938,9 +940,9 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
                     chatListView.invalidate();
 //                    updateBulletinLayout();
                     if (AndroidUtilities.isTablet() && getParentActivity() instanceof LaunchActivity) {
-                        BaseFragment mainFragment = ((LaunchActivity)getParentActivity()).getActionBarLayout().getLastFragment();
+                        BaseFragment mainFragment = ((LaunchActivity) getParentActivity()).getActionBarLayout().getLastFragment();
                         if (mainFragment instanceof DialogsActivity) {
-                            ((DialogsActivity)mainFragment).setPanTranslationOffset(y);
+                            ((DialogsActivity) mainFragment).setPanTranslationOffset(y);
                         }
                     }
                 }
@@ -1555,6 +1557,7 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
 
     private ActionBarPopupWindow scrimPopupWindow;
     private int scrimPopupX, scrimPopupY;
+
     private void closeMenu() {
         if (scrimPopupWindow != null) {
             scrimPopupWindow.dismiss();
@@ -1620,11 +1623,11 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
                 arrow.setSpan(new ImageSpan(arrowDrawable, DynamicDrawableSpan.ALIGN_CENTER), 0, arrow.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 SpannableStringBuilder link = new SpannableStringBuilder();
                 link
-                    .append(getString("EventLogFilterGroupInfo", R.string.EventLogFilterGroupInfo))
-                    .append(" ")
-                    .append(arrow)
-                    .append(" ")
-                    .append(getString("ChannelAdministrators", R.string.ChannelAdministrators));
+                        .append(getString("EventLogFilterGroupInfo", R.string.EventLogFilterGroupInfo))
+                        .append(" ")
+                        .append(arrow)
+                        .append(" ")
+                        .append(getString("ChannelAdministrators", R.string.ChannelAdministrators));
                 link.setSpan(new ClickableSpan() {
                     @Override
                     public void onClick(@NonNull View view) {
@@ -1908,15 +1911,15 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
         };
 
         if (
-            ChatObject.canBlockUsers(currentChat) &&
-            message.currentEvent != null && (
-                message.currentEvent.action instanceof TLRPC.TL_channelAdminLogEventActionDeleteMessage ||
-                message.currentEvent.action instanceof TLRPC.TL_channelAdminLogEventActionEditMessage ||
-                message.currentEvent.action instanceof TLRPC.TL_channelAdminLogEventActionParticipantJoin ||
-                message.currentEvent.action instanceof TLRPC.TL_channelAdminLogEventActionParticipantJoinByInvite ||
-                message.currentEvent.action instanceof TLRPC.TL_channelAdminLogEventActionParticipantJoinByRequest
-            ) &&
-            message.messageOwner != null && message.messageOwner.from_id != null
+                ChatObject.canBlockUsers(currentChat) &&
+                        message.currentEvent != null && (
+                        message.currentEvent.action instanceof TLRPC.TL_channelAdminLogEventActionDeleteMessage ||
+                                message.currentEvent.action instanceof TLRPC.TL_channelAdminLogEventActionEditMessage ||
+                                message.currentEvent.action instanceof TLRPC.TL_channelAdminLogEventActionParticipantJoin ||
+                                message.currentEvent.action instanceof TLRPC.TL_channelAdminLogEventActionParticipantJoinByInvite ||
+                                message.currentEvent.action instanceof TLRPC.TL_channelAdminLogEventActionParticipantJoinByRequest
+                ) &&
+                        message.messageOwner != null && message.messageOwner.from_id != null
         ) {
             TLRPC.User user = getMessagesController().getUser(selectedObject.messageOwner.from_id.user_id);
             if (user != null && !UserObject.isUserSelf(user)) {
@@ -2403,7 +2406,8 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
                 if (currentChat != null) {
                     TLRPC.ChatFull chatFull = getMessagesController().getChatFull(currentChat.id);
                     if (chatFull != null && chatFull.antispam) {
-                        TLRPC.ChannelParticipant antispamParticipant = new TLRPC.ChannelParticipant() {};
+                        TLRPC.ChannelParticipant antispamParticipant = new TLRPC.ChannelParticipant() {
+                        };
                         antispamParticipant.user_id = getMessagesController().telegramAntispamUserId;
                         antispamParticipant.peer = getMessagesController().getPeer(antispamParticipant.user_id);
                         loadAntispamUser(getMessagesController().telegramAntispamUserId);
@@ -2484,7 +2488,7 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
             int checkLoadCount;
             if (scroll) {
                 checkLoadCount = 4;
-            } else  {
+            } else {
                 checkLoadCount = 1;
             }
             if (firstVisibleItem <= checkLoadCount && !loading && !endReached) {
@@ -2869,8 +2873,8 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
                     public boolean shouldShowTopicButton(ChatMessageCell cell) {
                         MessageObject message = cell.getMessageObject();
                         if (message == null || message.currentEvent == null || !(
-                            message.currentEvent.action instanceof TLRPC.TL_channelAdminLogEventActionEditMessage ||
-                            message.currentEvent.action instanceof TLRPC.TL_channelAdminLogEventActionDeleteMessage
+                                message.currentEvent.action instanceof TLRPC.TL_channelAdminLogEventActionEditMessage ||
+                                        message.currentEvent.action instanceof TLRPC.TL_channelAdminLogEventActionDeleteMessage
                         )) {
                             return false;
                         }
@@ -2896,6 +2900,14 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
 
                     @Override
                     public void didPressSideButton(ChatMessageCell cell) {
+                        if (getParentActivity() == null) {
+                            return;
+                        }
+                        showDialog(ShareAlert.createShareAlert(mContext, cell.getMessageObject(), null, ChatObject.isChannel(currentChat) && !currentChat.megagroup, null, false));
+                    }
+
+                    @Override
+                    public void didLongPressSideButton(ChatMessageCell cell, float sideStartX, float sideStartY) {
                         if (getParentActivity() == null) {
                             return;
                         }
@@ -4079,9 +4091,11 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
 
 
     private ChatMessageCell dummyMessageCell;
+
     private int getScrollOffsetForMessage(MessageObject object) {
         return getScrollOffsetForMessage(getHeightForMessage(object, !TextUtils.isEmpty(highlightMessageQuote))) - scrollOffsetForQuote(object);
     }
+
     private int getScrollOffsetForMessage(int messageHeight) {
         return (int) Math.max(-dp(2), (chatListView.getMeasuredHeight() - /*blurredViewBottomOffset - chatListViewPaddingTop - */messageHeight) / 2);
     }
@@ -4176,6 +4190,7 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
     private int scrollCallbackAnimationIndex;
 
     private final ChatScrollCallback chatScrollHelperCallback = new ChatScrollCallback();
+
     public class ChatScrollCallback extends RecyclerAnimationScrollHelper.AnimationCallback {
 
         private MessageObject scrollTo;
@@ -4227,6 +4242,7 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
     private long savedScrollEventId;
     private int savedScrollPosition = -1;
     private int savedScrollOffset;
+
     public void saveScrollPosition(boolean fromTop) {
         if (chatListView != null && chatLayoutManager != null && chatListView.getChildCount() > 0) {
             View view = null;

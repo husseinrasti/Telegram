@@ -34,6 +34,7 @@ import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
@@ -479,6 +480,13 @@ public class ShareAlert extends BottomSheet implements NotificationCenter.Notifi
 
     public ShareAlert(final Context context, ChatActivity fragment, ArrayList<MessageObject> messages, final String text, final String text2, boolean channel, final String copyLink, final String copyLink2, boolean fullScreen, boolean forCall, boolean includeStory, Theme.ResourcesProvider resourcesProvider) {
         super(context, true, resourcesProvider);
+
+        Log.i("hussein", "ShareAlert #4 Chat Activity");
+        Log.i("hussein", "ShareAlert: " + channel);
+        Log.i("hussein", "ShareAlert: " + messages);
+        Log.i("hussein", "ShareAlert: " + text);
+        Log.i("hussein", "ShareAlert: " + context);
+
         this.resourcesProvider = resourcesProvider;
         this.includeStory = includeStory;
 
@@ -1581,7 +1589,7 @@ public class ShareAlert extends BottomSheet implements NotificationCenter.Notifi
     protected void onShareStory(View cell) {
 
     }
-    
+
     private void showPremiumBlockedToast(View view, long dialogId) {
         AndroidUtilities.shakeViewSpring(view, shiftDp = -shiftDp);
         BotWebViewVibrationEffect.APP_ERROR.vibrate();
@@ -1617,6 +1625,7 @@ public class ShareAlert extends BottomSheet implements NotificationCenter.Notifi
     }
 
     private int shiftDp = 4;
+
     private void selectDialog(View cell, TLRPC.Dialog dialog) {
         if (dialog instanceof ShareDialogsAdapter.MyStoryDialog) {
             onShareStory(cell);
@@ -1892,6 +1901,7 @@ public class ShareAlert extends BottomSheet implements NotificationCenter.Notifi
 
     private boolean showSendersName = true;
     private ActionBarPopupWindow sendPopupWindow;
+
     private boolean onSendLongClick(View view) {
         if (parentActivity == null) {
             return false;
@@ -2050,7 +2060,7 @@ public class ShareAlert extends BottomSheet implements NotificationCenter.Notifi
             }
         }
 
-        CharSequence[] text = new CharSequence[] { commentTextView.getText() };
+        CharSequence[] text = new CharSequence[]{commentTextView.getText()};
         ArrayList<TLRPC.MessageEntity> entities = MediaDataController.getInstance(currentAccount).getEntities(text, true);
         if (sendingMessageObjects != null) {
             List<Long> removeKeys = new ArrayList<>();
@@ -2064,7 +2074,7 @@ public class ShareAlert extends BottomSheet implements NotificationCenter.Notifi
                 if (frameLayout2.getTag() != null && commentTextView.length() > 0) {
                     SendMessagesHelper.getInstance(currentAccount).sendMessage(SendMessagesHelper.SendMessageParams.of(text[0] == null ? null : text[0].toString(), key, replyTopMsg, replyTopMsg, null, true, entities, null, null, withSound, 0, null, false));
                 }
-                int result = SendMessagesHelper.getInstance(currentAccount).sendMessage(sendingMessageObjects, key, !showSendersName,false, withSound, 0, replyTopMsg);
+                int result = SendMessagesHelper.getInstance(currentAccount).sendMessage(sendingMessageObjects, key, !showSendersName, false, withSound, 0, replyTopMsg);
                 if (result != 0) {
                     removeKeys.add(key);
                 }
@@ -2424,7 +2434,9 @@ public class ShareAlert extends BottomSheet implements NotificationCenter.Notifi
     private class ShareDialogsAdapter extends RecyclerListView.SelectionAdapter {
 
         private class MyStoryDialog extends TLRPC.Dialog {
-            { id = Long.MAX_VALUE; }
+            {
+                id = Long.MAX_VALUE;
+            }
         }
 
         private Context context;
@@ -2700,6 +2712,7 @@ public class ShareAlert extends BottomSheet implements NotificationCenter.Notifi
         }
 
         boolean internalDialogsIsSearching = false;
+
         private void searchDialogsInternal(final String query, final int searchId) {
             MessagesStorage.getInstance(currentAccount).getStorageQueue().postRunnable(() -> {
                 try {
@@ -3336,7 +3349,7 @@ public class ShareAlert extends BottomSheet implements NotificationCenter.Notifi
                 searchAdapter.searchDialogs(searchView.searchEditText.getText().toString());
             } else {
                 if (lastOffset == Integer.MAX_VALUE) {
-                    layoutManager.scrollToPositionWithOffset(0,  0);
+                    layoutManager.scrollToPositionWithOffset(0, 0);
                 } else {
                     layoutManager.scrollToPositionWithOffset(0, 0);
                 }
