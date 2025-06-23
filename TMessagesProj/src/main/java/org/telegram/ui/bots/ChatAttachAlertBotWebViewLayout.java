@@ -76,6 +76,7 @@ public class ChatAttachAlertBotWebViewLayout extends ChatAttachAlert.AttachAlert
     private long queryId;
     private boolean silent;
     private int replyToMsgId;
+    private long monoforumTopicId;
     private int currentAccount;
     private String startCommand;
 
@@ -108,6 +109,14 @@ public class ChatAttachAlertBotWebViewLayout extends ChatAttachAlert.AttachAlert
             prolongWebView.silent = silent;
             if (replyToMsgId != 0) {
                 prolongWebView.reply_to = SendMessagesHelper.getInstance(currentAccount).createReplyInput(replyToMsgId);
+                if (monoforumTopicId != 0) {
+                    prolongWebView.reply_to.monoforum_peer_id = MessagesController.getInstance(currentAccount).getInputPeer(monoforumTopicId);
+                    prolongWebView.reply_to.flags |= 32;
+                }
+                prolongWebView.flags |= 1;
+            } else if (monoforumTopicId != 0) {
+                prolongWebView.reply_to = new TLRPC.TL_inputReplyToMonoForum();
+                prolongWebView.reply_to.monoforum_peer_id = MessagesController.getInstance(currentAccount).getInputPeer(monoforumTopicId);
                 prolongWebView.flags |= 1;
             }
 
@@ -473,15 +482,16 @@ public class ChatAttachAlertBotWebViewLayout extends ChatAttachAlert.AttachAlert
     }
 
     public void requestWebView(int currentAccount, long peerId, long botId, boolean silent, int replyToMsgId) {
-        requestWebView(currentAccount, peerId, botId, silent, replyToMsgId, null);
+        requestWebView(currentAccount, peerId, botId, silent, replyToMsgId, null, 0);
     }
 
-    public void requestWebView(int currentAccount, long peerId, long botId, boolean silent, int replyToMsgId, String startCommand) {
+    public void requestWebView(int currentAccount, long peerId, long botId, boolean silent, int replyToMsgId, String startCommand, long monoforumTopicId) {
         this.currentAccount = currentAccount;
         this.peerId = peerId;
         this.botId = botId;
         this.silent = silent;
         this.replyToMsgId = replyToMsgId;
+        this.monoforumTopicId = monoforumTopicId;
         this.startCommand = startCommand;
         if (addToHomeScreenItem != null) {
             if (MediaDataController.getInstance(currentAccount).canCreateAttachedMenuBotShortcut(botId)) {
@@ -517,6 +527,14 @@ public class ChatAttachAlertBotWebViewLayout extends ChatAttachAlert.AttachAlert
 
         if (replyToMsgId != 0) {
             req.reply_to = SendMessagesHelper.getInstance(currentAccount).createReplyInput(replyToMsgId);
+            if (monoforumTopicId != 0) {
+                req.reply_to.monoforum_peer_id = MessagesController.getInstance(currentAccount).getInputPeer(monoforumTopicId);
+                req.reply_to.flags |= 32;
+            }
+            req.flags |= 1;
+        } else if (monoforumTopicId != 0) {
+            req.reply_to = new TLRPC.TL_inputReplyToMonoForum();
+            req.reply_to.monoforum_peer_id = MessagesController.getInstance(currentAccount).getInputPeer(monoforumTopicId);
             req.flags |= 1;
         }
 
@@ -819,7 +837,9 @@ public class ChatAttachAlertBotWebViewLayout extends ChatAttachAlert.AttachAlert
                     if (isSwipeDisallowed || !allowSwipes || fullsize && !allowFullSizeSwipe || (shouldWaitWebViewScroll && !allowingScroll(false))) {
                         return false;
                     }
-                    if (velocityY >= dp(650) && (AndroidUtilities.distance(e1.getX(), e1.getY(), e2.getX(), e2.getY()) > dp(200) || (e2.getEventTime() - e1.getEventTime()) > 250) && (webView == null || webView.getScrollY() == 0)) {
+                    final float distance = AndroidUtilities.distance(e1.getX(), e1.getY(), e2.getX(), e2.getY());
+                    final float time = e2.getEventTime() - e1.getEventTime();
+                    if (velocityY >= dp(650) && (distance > dp(200) || (time > 250)) && (webView == null || webView.getScrollY() == 0)) {
                         flingInProgress = true;
 
                         if (swipeOffsetY >= swipeStickyRange || fullsize) {
@@ -1118,7 +1138,7 @@ public class ChatAttachAlertBotWebViewLayout extends ChatAttachAlert.AttachAlert
 
                 } else if (flingInProgress) {
                     flingInProgress = false;
-                } else if (allowSwipes && (!shouldWaitWebViewScroll || swipeOffsetY != -offsetY + topActionBarOffsetY || allowingScroll(false))) {
+                } else if (allowSwipes && (!shouldWaitWebViewScroll || swipeOffsetY != -offsetY + topActionBarOffsetY && allowingScroll(false))) {
                     if (swipeOffsetY <= -swipeStickyRange) {
                         if (stickToEdges) {
                             stickTo(-offsetY + topActionBarOffsetY);
@@ -1128,7 +1148,9 @@ public class ChatAttachAlertBotWebViewLayout extends ChatAttachAlert.AttachAlert
                             stickTo(0);
                         }
                     } else {
-                        if (delegate != null && ((ev.getEventTime() - pressDownTime) > 250 || AndroidUtilities.distance(ev.getX(), ev.getY(), pressDownX, pressDownY) > dp(200))) {
+                        final float distance = AndroidUtilities.distance(ev.getX(), ev.getY(), pressDownX, pressDownY);
+                        final long time = ev.getEventTime() - pressDownTime;
+                        if (delegate != null && (time > 250 || distance > dp(200))) {
                             delegate.onDismiss(!wasScrolling);
                         } else if (stickToEdges) {
                             stickTo(-offsetY + topActionBarOffsetY);

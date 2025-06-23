@@ -18,6 +18,7 @@ import android.os.Build;
 import android.provider.MediaStore;
 import android.text.SpannableString;
 import android.text.TextUtils;
+import android.util.Pair;
 
 import androidx.annotation.NonNull;
 
@@ -38,10 +39,12 @@ import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
 import org.telegram.messenger.VideoEditedInfo;
 import org.telegram.messenger.video.MediaCodecVideoConvertor;
+import org.telegram.tgnet.AbstractSerializedData;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.RequestDelegate;
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
+import org.telegram.tgnet.Vector;
 import org.telegram.tgnet.tl.TL_stories;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.AnimatedFileDrawable;
@@ -50,11 +53,14 @@ import org.telegram.ui.Components.RLottieDrawable;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 
 public class StoryEntry {
 
+    public static final int MAX_ENTRIES = 10;
     public final int currentAccount = UserConfig.selectedAccount;
 
     public long draftId;
@@ -117,13 +123,13 @@ public class StoryEntry {
     public boolean coverSet;
     public Bitmap coverBitmap;
 
-//    public int width, height;
     public long duration;
 
     public int resultWidth = 720;
     public int resultHeight = 1280;
 
     public int width, height;
+    public MediaController.CropState crop;
     // matrix describes transformations from width x height to resultWidth x resultHeight
     public final Matrix matrix = new Matrix();
 
@@ -197,6 +203,12 @@ public class StoryEntry {
         }
         if (round != null) {
             return true;
+        }
+        if (messageObjects != null && messageObjects.size() == 1) {
+            final MessageObject messageObject = messageObjects.get(0);
+            if (messageObject != null && messageObject.messageOwner != null && messageObject.messageOwner.action instanceof TLRPC.TL_messageActionStarGiftUnique) {
+                return true;
+            }
         }
         if (mediaEntities != null && !mediaEntities.isEmpty()) {
             for (int i = 0; i < mediaEntities.size(); ++i) {
@@ -292,29 +304,57 @@ public class StoryEntry {
             tempMatrix.preScale(s, s);
             tempMatrix.postScale(scale, scale);
             canvas.drawBitmap(mainFileBitmap, tempMatrix, bitmapPaint);
+//            final float s = (float) width / mainFileBitmap.getWidth();
+//            canvas.save();
+//            canvas.scale(scale, scale);
+//            canvas.concat(matrix);
+//            if (crop != null) {
+//                canvas.translate(width / 2.0f, height / 2.0f);
+//                int _w = width, _h = height;
+//                if ((crop.transformRotation / 90) % 2 == 1) {
+//                    _w = height;
+//                    _h = width;
+//                }
+//                canvas.clipRect(
+//                    -_w * crop.cropPw / 2.0f, -_h * crop.cropPh / 2.0f,
+//                    +_w * crop.cropPw / 2.0f, +_h * crop.cropPh / 2.0f
+//                );
+//                canvas.scale(crop.cropScale, crop.cropScale);
+//                canvas.translate(crop.cropPx * _w, crop.cropPy * _h);
+//                canvas.rotate(crop.cropRotate + crop.transformRotation);
+//                if (crop.mirrored) {
+//                    canvas.scale(-1, 1);
+//                }
+//                canvas.translate(-width / 2.0f, -height / 2.0f);
+//            }
+//            canvas.scale(s, s);
+//            canvas.drawBitmap(mainFileBitmap, 0, 0, bitmapPaint);
+//            canvas.restore();
         } else {
             if (isCollage()) {
                 for (int i = 0; i < collageContent.size(); ++i) {
-                    StoryEntry entry = collageContent.get(i);
+                    final StoryEntry entry = collageContent.get(i);
                     final File file = entry.filterFile != null ? entry.filterFile : entry.file;
                     if (file != null) {
                         try {
                             final Bitmap fileBitmap = getScaledBitmap(opts -> BitmapFactory.decodeFile(file.getPath(), opts), w, h, true, true);
                             canvas.save();
                             final RectF bounds = new RectF();
+                            int fw = fileBitmap.getWidth(), fh = fileBitmap.getHeight();
+                            final Pair<Integer, Integer> orientation = AndroidUtilities.getImageOrientation(file);
+                            if ((orientation.first / 90) % 2 == 1) {
+                                fw = fileBitmap.getHeight();
+                                fh = fileBitmap.getWidth();
+                            }
                             collage.parts.get(i).bounds(bounds, w, h);
                             canvas.translate(bounds.centerX(), bounds.centerY());
                             canvas.clipRect(-bounds.width() / 2.0f, -bounds.height() / 2.0f, bounds.width() / 2.0f, bounds.height() / 2.0f);
-                            final float s = Math.max(bounds.width() / fileBitmap.getWidth(), bounds.height() / fileBitmap.getHeight());
+                            final float s = Math.max(bounds.width() / fw, bounds.height() / fh);
                             canvas.scale(s, s);
+                            canvas.rotate(orientation.first);
                             canvas.translate(-fileBitmap.getWidth() / 2.0f, -fileBitmap.getHeight() / 2.0f);
                             canvas.drawBitmap(fileBitmap, 0, 0, null);
                             canvas.restore();
-//                            final float s = (float) width / fileBitmap.getWidth();
-//                            tempMatrix.preScale(s, s);
-//                            tempMatrix.postScale(scale, scale);
-//                            canvas.drawBitmap(fileBitmap, tempMatrix, bitmapPaint);
-//                            fileBitmap.recycle();
                         } catch (Exception e) {
                             FileLog.e(e);
                         }
@@ -334,6 +374,40 @@ public class StoryEntry {
                         FileLog.e(e);
                     }
                 }
+//                if (file != null) {
+//                    try {
+//                        Bitmap fileBitmap = getScaledBitmap(opts -> BitmapFactory.decodeFile(file.getPath(), opts), w, h, true, true);
+//                        final float s = (float) width / fileBitmap.getWidth();
+//                        canvas.save();
+//                        canvas.scale(scale, scale);
+//                        canvas.concat(matrix);
+//                        if (crop != null) {
+//                            canvas.translate(width / 2.0f, height / 2.0f);
+//                            int _w = width, _h = height;
+//                            if ((crop.transformRotation / 90) % 2 == 1) {
+//                                _w = height;
+//                                _h = width;
+//                            }
+//                            canvas.clipRect(
+//                                -_w * crop.cropPw / 2.0f, -_h * crop.cropPh / 2.0f,
+//                                +_w * crop.cropPw / 2.0f, +_h * crop.cropPh / 2.0f
+//                            );
+//                            canvas.scale(crop.cropScale, crop.cropScale);
+//                            canvas.translate(crop.cropPx * _w, crop.cropPy * _h);
+//                            canvas.rotate(crop.cropRotate + crop.transformRotation);
+//                            if (crop.mirrored) {
+//                                canvas.scale(-1, 1);
+//                            }
+//                            canvas.translate(-width / 2.0f, -height / 2.0f);
+//                        }
+//                        canvas.scale(s, s);
+//                        canvas.drawBitmap(fileBitmap, 0, 0, bitmapPaint);
+//                        canvas.restore();
+//                        fileBitmap.recycle();
+//                    } catch (Exception e) {
+//                        FileLog.e(e);
+//                    }
+//                }
             }
 
             if (paintFile != null) {
@@ -580,8 +654,7 @@ public class StoryEntry {
     }
 
     public void destroy(boolean draft) {
-        if (blurredVideoThumb != null && !blurredVideoThumb.isRecycled()) {
-            blurredVideoThumb.recycle();
+        if (blurredVideoThumb != null) {
             blurredVideoThumb = null;
         }
         if (uploadThumbFile != null) {
@@ -626,10 +699,7 @@ public class StoryEntry {
                 roundThumb = null;
             }
         }
-        if (thumbPathBitmap != null) {
-            thumbPathBitmap.recycle();
-            thumbPathBitmap = null;
-        }
+        thumbPathBitmap = null;
         if (collageContent != null) {
             for (int i = 0; i < collageContent.size(); ++i) {
                 collageContent.get(i).destroy(draft);
@@ -871,7 +941,7 @@ public class StoryEntry {
         entry.thumbPath = photoEntry.thumbPath;
         entry.duration = photoEntry.duration * 1000L;
         entry.left = 0;
-        entry.right = Math.min(1, 59_500f / entry.duration);
+        entry.right = Math.min(1, (float) TimelineView.MAX_SELECT_DURATION / entry.duration);
         if (entry.isVideo && entry.thumbPath == null) {
             entry.thumbPath = "vthumb://" + photoEntry.imageId;
         }
@@ -884,6 +954,19 @@ public class StoryEntry {
         }
         entry.setupMatrix();
         return entry;
+    }
+
+    public void setupMultipleStoriesSelector() {
+        if (isVideo && !isCollage() && !isEdit && !isRepost && duration > TimelineView.MAX_SELECT_DURATION + 10_000L && UserConfig.getInstance(currentAccount).isPremium()) {
+            long newDuration = TimelineView.MAX_SELECT_DURATION;
+            if (duration - newDuration > 10_000L) {
+                newDuration += Math.min(TimelineView.MAX_SELECT_DURATION, duration - newDuration);
+            }
+            if (duration - newDuration > 10_000L) {
+                newDuration += Math.min(TimelineView.MAX_SELECT_DURATION, duration - newDuration);
+            }
+            right = Math.min(1, (float) newDuration / duration);
+        }
     }
 
     public boolean isCollage() {
@@ -1086,6 +1169,44 @@ public class StoryEntry {
         }
     }
 
+    public int getTotalCount() {
+        if (!isVideo || isCollage() || isEdit || duration <= 0 || isRepost)
+            return 1;
+        final long totalDuration = (long) ((right - left) * duration);
+        if (totalDuration < TimelineView.MAX_SELECT_DURATION + 9_999L)
+            return 1;
+        return (int) Math.ceil((float) totalDuration / TimelineView.MAX_SELECT_DURATION);
+    }
+
+    public ArrayList<StoryEntry> cutIntoEntries() {
+        if (!isVideo || isCollage() || isEdit || duration <= 0 || isRepost)
+            return null;
+        final long totalDuration = (long) ((right - left) * duration);
+        if (totalDuration < TimelineView.MAX_SELECT_DURATION + 9_999L)
+            return null;
+
+        long runDuration = 0;
+        final ArrayList<StoryEntry> entries = new ArrayList<>();
+        this.right = left + (float) TimelineView.MAX_SELECT_DURATION / duration;
+        runDuration += TimelineView.MAX_SELECT_DURATION;
+        entries.add(this);
+
+        while (runDuration < totalDuration) {
+            final long thisDuration = Math.min(TimelineView.MAX_SELECT_DURATION, totalDuration - runDuration);
+            if (thisDuration < TimelineView.MIN_SELECT_DURATION) {
+                break;
+            }
+            final StoryEntry next = this.copy(true);
+            next.left = this.left + (float) runDuration / duration;
+            next.right = this.left + (float) (runDuration + thisDuration) / duration;
+            next.caption = "";
+            runDuration += TimelineView.MAX_SELECT_DURATION;
+            entries.add(next);
+        }
+
+        return entries;
+    }
+
     public void getVideoEditedInfo(@NonNull Utilities.Callback<VideoEditedInfo> whenDone) {
         if (!wouldBeVideo()) {
             whenDone.run(null);
@@ -1206,7 +1327,11 @@ public class StoryEntry {
             info.isDark = isDark;
             info.avatarStartTime = -1;
 
-            info.cropState = new MediaController.CropState();
+            if (crop != null) {
+                info.cropState = crop.clone();
+            } else {
+                info.cropState = new MediaController.CropState();
+            }
             info.cropState.useMatrix = new Matrix();
             info.cropState.useMatrix.set(matrix);
 
@@ -1241,6 +1366,10 @@ public class StoryEntry {
                     soundInfo.startTime = 0;
                 }
                 soundInfo.startTime += generalOffset;
+                if (soundInfo.startTime < 0) {
+                    soundInfo.audioOffset -= soundInfo.startTime;
+                    soundInfo.startTime = 0;
+                }
                 soundInfo.duration = (long) ((roundRight - roundLeft) * roundDuration) * 1000L;
                 info.mixedSoundInfos.add(soundInfo);
             }
@@ -1254,6 +1383,10 @@ public class StoryEntry {
                     soundInfo.startTime = 0;
                 }
                 soundInfo.startTime += generalOffset;
+                if (soundInfo.startTime < 0) {
+                    soundInfo.audioOffset -= soundInfo.startTime;
+                    soundInfo.startTime = 0;
+                }
                 soundInfo.duration = (long) ((audioRight - audioLeft) * audioDuration) * 1000L;
                 info.mixedSoundInfos.add(soundInfo);
             }
@@ -1416,9 +1549,9 @@ public class StoryEntry {
         }
         final RequestDelegate requestDelegate = (response, error) -> AndroidUtilities.runOnUIThread(() -> {
             checkStickersReqId = 0;
-            if (response instanceof TLRPC.Vector) {
+            if (response instanceof Vector) {
                 editStickers = new ArrayList<>();
-                TLRPC.Vector vector = (TLRPC.Vector) response;
+                Vector vector = (Vector) response;
                 for (int i = 0; i < vector.objects.size(); ++i) {
                     TLRPC.StickerSetCovered setCovered = (TLRPC.StickerSetCovered) vector.objects.get(i);
                     TLRPC.Document document = setCovered.cover;
@@ -1458,6 +1591,10 @@ public class StoryEntry {
     }
 
     public StoryEntry copy() {
+        return copy(false);
+    }
+
+    public StoryEntry copy(boolean withFiles) {
         StoryEntry newEntry = new StoryEntry();
         newEntry.draftId = draftId;
         newEntry.isDraft = isDraft;
@@ -1487,6 +1624,10 @@ public class StoryEntry {
         newEntry.isVideo = isVideo;
         newEntry.file = file;
         newEntry.fileDeletable = fileDeletable;
+        if (fileDeletable) {
+            newEntry.file = StoryEntry.makeCacheFile(currentAccount, ext(file));
+            AndroidUtilities.copyFileSafe(file, newEntry.file);
+        }
         newEntry.thumbPath = thumbPath;
         newEntry.muted = muted;
         newEntry.left = left;
@@ -1514,12 +1655,40 @@ public class StoryEntry {
         newEntry.scheduleDate = scheduleDate;
         newEntry.blurredVideoThumb = blurredVideoThumb;
         newEntry.uploadThumbFile = uploadThumbFile;
+        if (uploadThumbFile != null && uploadThumbFile.exists()) {
+            newEntry.uploadThumbFile = StoryEntry.makeCacheFile(currentAccount, ext(uploadThumbFile));
+            AndroidUtilities.copyFileSafe(uploadThumbFile, newEntry.uploadThumbFile);
+        }
         newEntry.draftThumbFile = draftThumbFile;
+        if (draftThumbFile != null && draftThumbFile.exists()) {
+            newEntry.draftThumbFile = StoryEntry.makeCacheFile(currentAccount, ext(draftThumbFile));
+            AndroidUtilities.copyFileSafe(draftThumbFile, newEntry.draftThumbFile);
+        }
         newEntry.paintFile = paintFile;
+        if (paintFile != null && paintFile.exists()) {
+            newEntry.paintFile = StoryEntry.makeCacheFile(currentAccount, ext(paintFile));
+            AndroidUtilities.copyFileSafe(paintFile, newEntry.paintFile);
+        }
         newEntry.messageFile = messageFile;
+        if (messageFile != null && messageFile.exists()) {
+            newEntry.messageFile = StoryEntry.makeCacheFile(currentAccount, ext(messageFile));
+            AndroidUtilities.copyFileSafe(messageFile, newEntry.messageFile);
+        }
         newEntry.backgroundFile = backgroundFile;
+        if (backgroundFile != null && backgroundFile.exists()) {
+            newEntry.backgroundFile = StoryEntry.makeCacheFile(currentAccount, ext(backgroundFile));
+            AndroidUtilities.copyFileSafe(backgroundFile, newEntry.backgroundFile);
+        }
         newEntry.paintBlurFile = paintBlurFile;
+        if (paintBlurFile != null && paintBlurFile.exists()) {
+            newEntry.paintBlurFile = StoryEntry.makeCacheFile(currentAccount, ext(paintBlurFile));
+            AndroidUtilities.copyFileSafe(paintBlurFile, newEntry.paintBlurFile);
+        }
         newEntry.paintEntitiesFile = paintEntitiesFile;
+        if (paintEntitiesFile != null && paintEntitiesFile.exists()) {
+            newEntry.paintEntitiesFile = StoryEntry.makeCacheFile(currentAccount, ext(paintEntitiesFile));
+            AndroidUtilities.copyFileSafe(paintEntitiesFile, newEntry.paintEntitiesFile);
+        }
         newEntry.averageDuration = averageDuration;
         newEntry.mediaEntities = new ArrayList<>();
         if (mediaEntities != null) {
@@ -1530,6 +1699,10 @@ public class StoryEntry {
         newEntry.stickers = stickers;
         newEntry.editStickers = editStickers;
         newEntry.filterFile = filterFile;
+        if (filterFile != null && filterFile.exists()) {
+            newEntry.filterFile = StoryEntry.makeCacheFile(currentAccount, ext(filterFile));
+            AndroidUtilities.copyFileSafe(filterFile, newEntry.filterFile);
+        }
         newEntry.filterState = filterState;
         newEntry.thumbBitmap = thumbBitmap;
         newEntry.fromCamera = fromCamera;
@@ -1551,6 +1724,7 @@ public class StoryEntry {
         newEntry.collage = collage;
         newEntry.videoLoop = videoLoop;
         newEntry.videoOffset = videoOffset;
+        newEntry.videoVolume = videoVolume;
         return newEntry;
     }
 
